@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+        http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-3.0.xsd">
+    <bean id="connectionProperties" class="org.springframework.context.support.PropertySourcesPlaceholderConfigurer">
+        <property name="location" value="classpath:connection.properties"/>
+        <property name="order" value="10000"/>
+        <property name="ignoreUnresolvablePlaceholders" value="true"/>
+    </bean>
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close" lazy-init="true">
+        <property name="driverClassName" value="com.ibm.db2.jcc.DB2Driver"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.user}"/>
+        <property name="password" value="${jdbc.pass}"/>
+    </bean>
+    <bean class="org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor">
+        <property name="jobRegistry" ref="jobRegistry"/>
+    </bean>
+    <bean id="jobRepository" class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="transactionManager" ref="transactionManager"/>
+        <property name="isolationLevelForCreate" value="ISOLATION_DEFAULT"/>
+    </bean>
+    <bean id="jobLauncher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+        <property name="jobRepository" ref="jobRepository"/>
+        <property name="taskExecutor" ref="syncTaskExecutor"/>
+    </bean>
+    <bean id="syncTaskExecutor" class="org.springframework.core.task.SyncTaskExecutor"/>
+    <bean id="jobRegistry" class="org.springframework.batch.core.configuration.support.MapJobRegistry"/>
+    <bean id="jobExplorer" class="org.springframework.batch.core.explore.support.JobExplorerFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <bean id="jobOperator" class="org.springframework.batch.core.launch.support.SimpleJobOperator">
+        <property name="jobExplorer" ref="jobExplorer"/>
+        <property name="jobRepository" ref="jobRepository"/>
+        <property name="jobRegistry" ref="jobRegistry"/>
+        <property name="jobLauncher" ref="jobLauncher"/>
+    </bean>
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <bean id="compositeSubWriter" class="org.springframework.batch.item.support.CompositeItemWriter" scope="step">
+        <property name="delegates">
+            <list>
+                <ref bean="subWriter" />
+                <ref bean="subWagerTemplateWriter" />
+                <ref bean="bsWriter" />
+            </list>
+        </property>
+    </bean>
+    <bean id="subWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="subWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="subWriter" />
+<!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['SUBFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.sub.SubLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="iddgsubscription,playerid,iddggame,duration,durationunit,state,starcdc,endcdc,cdccreated,tscreated,tslastmodified,originchannelid,originsystemid,originclientid,txuid,description,autorenew" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="subWagerTemplateWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="subWagerTemplateWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="subWagerTemplateWriter" />
+<!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['SWTFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.sub.SubWagerTemplateLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="iddgsubswagertemplate,iddgsubscription,iddggame,draw_days,wageramount,autopopup" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="bsWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="bsWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="subWagerTemplateWriter" />
+<!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['BSFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.sub.BoardStackLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="iddgboardstack,iddggame,iddgwager,iddgsubscription,extrastake,isaddon" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="bWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="bWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="subWagerTemplateWriter" />
+<!--         <property name="silent" value="true" /> -->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['BFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.sub.BoardLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="iddgboard,iddgboardstack,boardstake,picksystem,numberofquickpickmarks,numberofsecondaryquickpickmarks,pickvalues,boardindex,modifier" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="pltCsvExporterExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor" scope="step">
+        <property name="corePoolSize" value="1"/>
+        <property name="maxPoolSize" value="1"/>
+    </bean>
+    <bean id="emptyProcessor" class="com.igt.plt.EmptyProcessor" scope="step" />
+    <bean id="subReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT IDDGSUBSCRIPTION,PLAYERID,IDDGGAME,STARTCDC,CDCCREATED,TSCREATED,TSLASTMODIFIED,TXUID,WAGERAMOUNT,IDDGBOARDSTACK"/>
+                <property name="fromClause" value="FROM GIS.VIEW_MIGRATED_SUBS"/>
+                <property name="sortKey" value="IDDGSUBSCRIPTION"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.sub.SubRowMapper"/>
+        </property>
+    </bean>
+    <bean id="subBoardReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT IDDGBOARD,IDDGBOARDSTACK,BOARDSTAKE,PICKSYSTEM,NUMBEROFQUICKPICKMARKS,NROFSECONDARYQUICKPICKMARKS,PICKVALUES,BOARDINDEX,MODIFIER"/>
+                <property name="fromClause" value="FROM GIS.MQT_MIGRATED_SUBS_BOARDS"/>
+                <property name="sortKey" value="IDDGBOARD"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.sub.BoardRowMapper"/>
+        </property>
+    </bean>
+    <batch:job id="subExport" restartable="false" job-repository="jobRepository">
+        <batch:step id="subMain">
+            <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                <batch:chunk reader="subReader"
+                             writer="compositeSubWriter"
+                             processor="emptyProcessor"
+                             commit-interval="#{jobParameters['COMMIT']}">
+                </batch:chunk>
+            </batch:tasklet>
+            <batch:next on="*" to="subBoards"/>
+        </batch:step>
+        <batch:step id="subBoards">
+            <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                <batch:chunk reader="subBoardReader"
+                             writer="bWriter"
+                             processor="emptyProcessor"
+                             commit-interval="#{jobParameters['COMMIT']}">
+                </batch:chunk>
+            </batch:tasklet>
+        </batch:step>
+    </batch:job>
+    <bean id="favReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT IDDGFAVORITEWAGER,IDDGFAVORITEWAGERNUMBER,NUMBEROFDRAWS,IDDGGAME,PLAYERID,TOTALPRICE,STAKE,TSCREATED,TSLASTMODIFIED,IDDGFAVORITEBOARDSTACK"/>
+                <property name="fromClause" value="FROM GIS.VIEW_MIGRATED_FAV"/>
+                <property name="sortKey" value="IDDGFAVORITEWAGER"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.fav.FavRowMapper"/>
+        </property>
+    </bean>
+    <bean id="compositeFavWriter" class="org.springframework.batch.item.support.CompositeItemWriter" scope="step">
+        <property name="delegates">
+            <list>
+                <ref bean="favWriter" />
+                <ref bean="favBsWriter" />
+            </list>
+        </property>
+    </bean>
+    <bean id="favWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="favWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="favWriter" />
+        <!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['FAVFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.fav.FavLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="favorite_id,favorite_number,duration,game_id,player_id,price,stake,name,created_ts,modified_ts,favorite_group_id" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="favBsWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="favBsWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="favBsWriter" />
+        <!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['FAVBSFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.fav.FavBsLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="favorite_id,stack_id,game_id,draw_names,addon_stake,is_addon" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="favBoardReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT IDDGFAVORITEBOARD,IDDGFAVORITEBOARDSTACK,BOARDSTAKE,PICKSYSTEM,NUMBEROFQUICKPICKMARKS,NROFSECONDARYQUICKPICKMARKS,PICKVALUES,BOARDINDEX,MODIFIER"/>
+                <property name="fromClause" value="FROM GIS.VIEW_MIGRATED_FAV_BOARDS"/>
+                <property name="sortKey" value="IDDGFAVORITEBOARD"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.fav.FavBoardRowMapper"/>
+        </property>
+    </bean>
+    <bean id="favBWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="favBWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="favBWriter" />
+        <!--         <property name="silent" value="true" /> -->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['FAVBFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.fav.FavBoardLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="board_id,stack_id,stake,system_id,primary_qp,secondary_qp,primary_selections,secondary_selections,tertiary_selections,addon_selection,board_index,modifier" />
+            </bean>
+        </property>
+    </bean>
+    <batch:job id="favExport" restartable="false" job-repository="jobRepository">
+        <batch:step id="favMain">
+            <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                <batch:chunk reader="favReader"
+                             writer="compositeFavWriter"
+                             processor="emptyProcessor"
+                             commit-interval="#{jobParameters['COMMIT']}">
+                </batch:chunk>
+            </batch:tasklet>
+            <batch:next on="*" to="favBoards"/>
+        </batch:step>
+        <batch:step id="favBoards">
+            <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                <batch:chunk reader="favBoardReader"
+                             processor="emptyProcessor"
+                             writer="favBWriter"
+                             commit-interval="#{jobParameters['COMMIT']}">
+                </batch:chunk>
+            </batch:tasklet>
+        </batch:step>
+    </batch:job>
+    <bean id="txReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT TX_HEADER_ID, GLOBAL_TRANS_ID, CORRELATION_ID, UUID, PLAYER_ID, TRANSACTION_TIME_UTC, LOTTERY_TRANSACTION_TYPE, TRANSACTION_AMOUNT, SERIAL, CDC, TRANSACTION_TIME_LOCAL, PRODUCT, START_DRAW_NUMBER, END_DRAW_NUMBER, DATA, SUBSCRIPTION_ID, JOURNAL_ADDRESS, DATA"/>
+                <property name="fromClause" value="FROM TXSTORE.VIEW_MIGRATED_TX"/>
+                <!--                <property name="whereClause" value="WHERE STATE='ACTIVE' AND TSCREATED > '2022-11-27'"/>-->
+                <property name="sortKey" value="TX_HEADER_ID"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.tx.TxRowMapper">
+                <constructor-arg name="currDrawsString" value="${currDraws}" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="txWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--   <bean id="txWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="txWriter" />
+<!--       <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['TXTRANSACTIONFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.tx.TxLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="tx_transaction_id,global_trans_id,correlation_id,uuid,player_id,transaction_time,transaction_type,channel_id,system_id,transaction_amount,transaction_discount_amount,currency,serial,cdc,game_engine_transaction_time,product_id,start_draw_number,end_draw_number,site_json_data,serial_number" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="txJsonWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--   <bean id="txJsonWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="txJsonWriter" />
+<!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['TXTRANSACTIONJSONFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.tx.TxJsonLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="uuid,json" />
+            </bean>
+        </property>
+    </bean>
+<!--    This one was used only to export corrections for txstore.tx_transaction.json_data-->
+<!--    If this will be needed again simply -->
+<!--    1. use this instead of compositeTxMainWriter-->
+<!--    2. comment <batch:next on="*" to="txDrawEntries"/> so that txMain is only step-->
+<!--    3. comment all steps except <batch:step id="txMain"> -->
+    <bean id="correctJsonWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+        <property name="name" value="correctJsonWriter" />
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['TXTRANSACTIONJSONFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.tx.TxJsonLineAggregator" />
+        </property>
+    </bean>
+    <bean id="compositeTxMainWriter" class="org.springframework.batch.item.support.CompositeItemWriter" scope="step">
+        <property name="delegates">
+            <list>
+                <ref bean="txWriter" />
+                <ref bean="txJsonWriter" />
+            </list>
+        </property>
+    </bean>
+    <bean id="txRecordProcessor" class="com.igt.plt.tx.TxRecordProcessor" scope="step" />
+    <bean id="txGrouppedProcessor" class="com.igt.plt.tx.TxGrouppedProcessor" scope="step" />
+    <bean id="txDrawEntriesReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT ID, UUID, DRAWNUMBER, PRODUCT"/>
+                <property name="fromClause" value="FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY"/>
+                <!--                <property name="whereClause" value="WHERE STATE='ACTIVE' AND TSCREATED > '2022-11-27'"/>-->
+                <property name="sortKey" value="ID"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.tx.TxDrawEntryRowMapper">
+                <constructor-arg name="currDrawsString" value="${currDraws}" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="txDrawEntriesWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="txDrawEntriesWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="txDrawEntriesWriter" />
+<!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['TXDRAWENTRYFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.tx.TxDrawEntryLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="tx_draw_entry_id,tx_transaction_uuid,draw_id,product_id,winning_status,json_data" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="txDrawReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT IDDGGAMEEVENT,IDDGGAME,DRAWNUMBER,DRAWDATE"/>
+                <property name="fromClause" value="FROM TXSTORE.MIGRATED_TX_DRAW"/>
+                <property name="sortKey" value="IDDGGAMEEVENT"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.tx.TxDrawRowMapper">
+                <constructor-arg name="currDrawsString" value="${currDraws}" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="txDrawWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="txDrawWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="txDrawWriter" />
+<!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['TXDRAWSFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.tx.TxDrawLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="product_id,draw_id,draw_name,draw_time,draw_status" />
+            </bean>
+        </property>
+    </bean>
+    <bean id="txResultReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT ID,LOTTERY_TX_HEADER_ID,DRAWNUMBER,PRODUCT,TRANSACTION_AMOUNT,TRANSACTION_TIME_UTC,TX_DRAW_ENTRY_ID,UUID,DATA"/>
+                <property name="fromClause" value="FROM TXSTORE.MIGRATED_RESULTS"/>
+                <property name="sortKey" value="ID"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="5000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.tx.TxResultRowMapper"/>
+        </property>
+    </bean>
+    <bean id="txResultProcessor" class="com.igt.plt.tx.TxResultProcessor" scope="step" />
+    <bean id="txDrawResultWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+<!--    <bean id="txDrawResultWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="txDrawResultWriter" />
+        <!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['TXRESULTFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.tx.TxResultLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="draw_id,product_id,prize_amount,ts_created,ts_modified,tx_draw_entry_id,validation_id,claim_id,prize_description,prize_type,winning_board_index,winning_division" />
+            </bean>
+        </property>
+    </bean>
+    <batch:job id="txExport" restartable="false" job-repository="jobRepository">
+        <batch:step id="txMain">
+            <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                <batch:chunk reader="txReader"
+                             processor="txRecordProcessor"
+                             writer="compositeTxMainWriter"
+                             commit-interval="#{jobParameters['COMMIT']}">
+                </batch:chunk>
+            </batch:tasklet>
+             <batch:next on="*" to="txDrawEntries"/>
+        </batch:step>
+         <batch:step id="txDrawEntries">
+             <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                 <batch:chunk reader="txDrawEntriesReader"
+                              processor="emptyProcessor"
+                              writer="txDrawEntriesWriter"
+                              commit-interval="#{jobParameters['COMMIT']}">
+                 </batch:chunk>
+             </batch:tasklet>
+             <batch:next on="*" to="txDraw"/>
+         </batch:step>
+         <batch:step id="txDraw">
+             <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                 <batch:chunk reader="txDrawReader"
+                              processor="emptyProcessor"
+                              writer="txDrawWriter"
+                              commit-interval="#{jobParameters['COMMIT']}">
+                 </batch:chunk>
+             </batch:tasklet>
+             <batch:next on="*" to="txResult"/>
+         </batch:step>
+         <batch:step id="txResult">
+             <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                 <batch:chunk reader="txResultReader"
+                              processor="txResultProcessor"
+                              writer="txDrawResultWriter"
+                             commit-interval="#{jobParameters['COMMIT']}">
+                </batch:chunk>
+            </batch:tasklet>
+        </batch:step>
+    </batch:job>
+</beans>
