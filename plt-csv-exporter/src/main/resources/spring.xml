@@ -369,7 +369,9 @@
             </list>
         </property>
     </bean>
-    <bean id="txRecordProcessor" class="com.igt.plt.tx.TxRecordProcessor" scope="step" />
+    <bean id="txRecordProcessor" class="com.igt.plt.tx.TxRecordProcessor" scope="step" >
+        <constructor-arg name="projString" value="${proj}" />
+    </bean>
     <bean id="txGrouppedProcessor" class="com.igt.plt.tx.TxGrouppedProcessor" scope="step" />
     <bean id="txDrawEntriesReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
         <property name="dataSource" ref="dataSource"/>

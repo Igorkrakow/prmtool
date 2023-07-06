@@ -57,8 +57,9 @@ public class TxRecordProcessor implements ItemProcessor<TxRecord, TxRecord> {
     private static final BigInteger MOD = new BigInteger("1");
     private final JAXBContext context;
     private final ObjectMapper mapper = new ObjectMapper();
-
-    public TxRecordProcessor(){
+    private final String proj;
+    public TxRecordProcessor(String projString){
+        proj = projString;
         try{
             context = JAXBContext.newInstance(BalanceTransaction.class);
             mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -253,8 +254,14 @@ public class TxRecordProcessor implements ItemProcessor<TxRecord, TxRecord> {
             final String json = mapper.writeValueAsString(out);
             final String corrected = json.replaceAll("\"", "\"\"");
             item.setJson(corrected);
-            item.setChannelId(root.getChannel());
-            item.setSystemId(root.getSubChannel());
+            if(proj.equals("KY")){
+                item.setChannelId("5002");
+                item.setSystemId("5008");
+            }
+            else {
+                item.setChannelId(root.getChannel());
+                item.setSystemId(root.getSubChannel());
+            }
             return item;
         }catch (Exception e){
             LOGGER.error("Caught " + e.getClass().getName(), e);
