@@ -1,25 +1,35 @@
 #!/bin/bash
 # The following three lines have been added by UDB DB2.
-# To run this file use command: sh export_.sh "2023-01-01 00:00:00.000000" "2023-06-23 00:00:00.000000" 1929238
+# To run this file use command: sh export_.sh "KY(RI)" "2023-01-01 00:00:00.000000" "2023-06-23 00:00:00.000000" 1929238
 #######   set variable ########
-if [ $# -lt 2 ];
+if [ $# -lt 3 ];
 then
   echo "$0: Missing arguments"
   exit 1
-elif [ $# -gt 3 ];
+elif [ $# -gt 4 ];
 then
   echo "$0: Too many arguments: $@"
   exit 1
 else
-  startDate=$1
-  endDate=$2
-  minId=$3
+  project=$1
+  startDate=$2
+  endDate=$3
+  minId=$4
 fi
-if [[ ($# -eq 2)&&(-z $minId) ]];
+if [[ ($# -eq 3)&&(-z $minId) ]];
 then
 	conditionId=""
 else
 	conditionId="AND H.TX_HEADER_ID> $minId"
+fi
+
+if [ "$project" = "KY" ]; then
+	project_condition="L.PRODUCT NOT IN (30,35) AND "
+elif [ "$project" = "RI" ]; then
+  project_condition="L.PRODUCT IN (15) AND "
+else
+  echo "Project with name $project - not exist"
+  exit 1
 fi
 
 ####  current directory #####
@@ -55,8 +65,11 @@ db2 "TRUNCATE TABLE TXSTORE.MIGR_TX_HEADER IMMEDIATE"
 ##########################################################################################################################################################################################
 echo "####### Copy data to MIGR_TX_HEADER from TX_HEADER #######"
 db2 "INSERT INTO TXSTORE.MIGR_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID)
-      SELECT TX_HEADER_ID,PLAYER_ID,UUID
-      FROM TXSTORE.TX_HEADER WHERE TX_HEADER_ID BETWEEN $countMIN AND $countMAX"
+      SELECT T.TX_HEADER_ID,T.PLAYER_ID,T.UUID
+        FROM TXSTORE.TX_HEADER T
+        JOIN TXSTORE.LOTTERY_TX_HEADER L
+        ON T.TX_HEADER_ID = L.LOTTERY_TX_HEADER_ID
+      WHERE $project_condition T.TX_HEADER_ID BETWEEN $countMIN AND $countMAX"
 #####################
 echo "####### Copy data to MIGRATED_TX_DRAW_ENTRY from DGGAMEEVENT #######"
 db2 "INSERT INTO TXSTORE.MIGRATED_TX_DRAW_ENTRY (ID,UUID,DRAWNUMBER,PRODUCT)
@@ -74,5 +87,9 @@ db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,P
       INNER JOIN TXSTORE.TX_HEADER HV ON HV.TX_HEADER_ID=LV.LOTTERY_TX_HEADER_ID INNER JOIN TXSTORE.STRING_TX_BODY BV ON BV.UUID=HV.UUID"
 #####################
 echo "####### Starting -JAR csv-exporter for txExport #######"
-java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
+if [ "$project" = "KY" ]; then
+	/tmp/java8/jre1.8.0_202/bin/java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
+elif [ "$project" = "RI" ]; then
+  java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
+fi
 #####################
