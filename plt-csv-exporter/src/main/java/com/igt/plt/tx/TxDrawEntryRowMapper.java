@@ -41,7 +41,13 @@ public class TxDrawEntryRowMapper implements RowMapper<TxDrawEntryRecord>{
         final boolean open;
         if(closed.contains(productId)) open = false;
         else open = drawId >= currDraws.get(productId);
-        final String winningStatus = open ? "OPEN" : "NON_WINNING";
+        final String winningStatus;
+        if(open){
+            winningStatus = "OPEN";
+        }
+        else{
+            winningStatus = rs.getString("WIN_STATUS");
+        }
         return new TxDrawEntryRecord(txDrawEntryId, txTransactionUuid, drawId, productId, winningStatus);
     }
 }

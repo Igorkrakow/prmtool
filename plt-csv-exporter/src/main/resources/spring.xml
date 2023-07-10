@@ -378,7 +378,7 @@
         <property name="queryProvider">
             <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
                 <property name="dataSource" ref="dataSource"/>
-                <property name="selectClause" value="SELECT ID, UUID, DRAWNUMBER, PRODUCT"/>
+                <property name="selectClause" value="SELECT ID, UUID, DRAWNUMBER, PRODUCT,WIN_STATUS"/>
                 <property name="fromClause" value="FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY"/>
                 <!--                <property name="whereClause" value="WHERE STATE='ACTIVE' AND TSCREATED > '2022-11-27'"/>-->
                 <property name="sortKey" value="ID"/>
