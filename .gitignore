@@ -1,4 +1,4 @@
-/plt-csv-exporter/target
+**/plt-csv-exporter/target
 /.idea
 /plt-csv-exporter/dependency-reduced-pom.xml
 /plt-csv-exporter/csv-exporter.iml
