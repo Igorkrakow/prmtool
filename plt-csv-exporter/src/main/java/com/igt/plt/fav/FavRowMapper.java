@@ -32,6 +32,7 @@ public class FavRowMapper implements RowMapper<FavRecord>{
         final Date tsLastModified = rs.getDate("TSLASTMODIFIED");
         final long favBsId = rs.getLong("IDDGFAVORITEBOARDSTACK");
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+        final long groupId = rs.getLong("IDDGFAVORITEWAGERGROUP");
         return new FavRecord(favId //
                 , favNr //
                 , duration //
@@ -41,6 +42,7 @@ public class FavRowMapper implements RowMapper<FavRecord>{
                 , stake //
                 , sdf.format(tsCreated) //
                 , sdf.format(tsLastModified) //
-                , favBsId);
+                , favBsId //
+                , groupId);
     }
 }

@@ -26,6 +26,7 @@ public class FavRecord{
     private final String drawNames = null;
     private final Long addonStake = null;
     private final boolean addon = false;
+    private final Long groupId;
 
     public Long getFavId(){
         return favId;
@@ -83,7 +84,11 @@ public class FavRecord{
         return addon;
     }
 
-    public FavRecord(Long favId, Long favNr, Integer duration, Long gameId, String playerId, Long price, Long stake, String tsCreated, String tsLastModified, Long favBsId){
+    public Long getGroupId(){
+        return groupId;
+    }
+
+    public FavRecord(Long favId, Long favNr, Integer duration, Long gameId, String playerId, Long price, Long stake, String tsCreated, String tsLastModified, Long favBsId, Long groupId){
         this.favId = favId;
         this.favNr = favNr;
         this.duration = duration;
@@ -94,5 +99,6 @@ public class FavRecord{
         this.tsCreated = tsCreated;
         this.tsLastModified = tsLastModified;
         this.favBsId = favBsId;
+        this.groupId = groupId;
     }
 }
