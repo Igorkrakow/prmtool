@@ -90,7 +90,12 @@ public class TxRecordProcessor implements ItemProcessor<TxRecord, TxRecord> {
                 final DrawGameWagerDetailsDTO drawGameWagerDetails = new DrawGameWagerDetailsDTO();
                 drawGameWagerDetails.setCardId("0");
                 drawGameWagerDetails.setTrxLoyaltyPoints(BigDecimal.ZERO);
-                drawGameWagerDetails.setJurisdiction(24);
+                if(proj.equals("KY")){
+                    drawGameWagerDetails.setJurisdiction(16);
+                }
+                else {
+                    drawGameWagerDetails.setJurisdiction(24);
+                }
                 drawGameWagerDetails.setProductNumber(item.getGameId().intValue());
                 drawGameWagerDetails.setJournalAddress(item.getJournalAddress());
                 final List<Integer> drawIds = new ArrayList<>();

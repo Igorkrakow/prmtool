@@ -39,6 +39,8 @@ public class FavLineAggregator implements LineAggregator<FavRecord>{
         returned += SEPARATOR;
         returned += emptyIfNull(item.getTsLastModified());
         returned += SEPARATOR;
+        returned += emptyIfNull(item.getGroupId());
+        returned += SEPARATOR;
         return returned;
     }
 }

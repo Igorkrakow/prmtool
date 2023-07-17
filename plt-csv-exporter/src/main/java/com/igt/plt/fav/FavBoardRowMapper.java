@@ -23,16 +23,24 @@ public class FavBoardRowMapper implements RowMapper<FavBoardRecord>{
         final long favBsId = rs.getLong("IDDGFAVORITEBOARDSTACK");
         final long stake = rs.getLong("BOARDSTAKE");
         final String pickSystem = rs.getString("PICKSYSTEM");
-        final int numberOfQuickPickMarks = rs.getInt("NUMBEROFQUICKPICKMARKS");
-        final int numberOfSecondaryQuickPickMarks = rs.getInt("NROFSECONDARYQUICKPICKMARKS");
+        final int numberOfQuickPickMarks;
+        final int numberOfSecondaryQuickPickMarks;
         final String pickValues = rs.getString("PICKVALUES");
         final String primarySelections, secondarySelections;
         if(pickValues.contains(":")){
             final String[] split = pickValues.split(":");
             primarySelections = split[0];
             secondarySelections = split[1];
+            final String[] split_primary_count = split[0].split(",");
+            final String[] split_secondary_count = split[1].split(",");
+            numberOfQuickPickMarks = split_primary_count.length;
+            numberOfSecondaryQuickPickMarks = split_secondary_count.length;
+
         }else{
             primarySelections = pickValues;
+            final String[] split_primary_count = primarySelections.split(",");
+            numberOfQuickPickMarks = split_primary_count.length;
+            numberOfSecondaryQuickPickMarks = 0;
             secondarySelections = null;
         }
         final int boardIndex = rs.getInt("BOARDINDEX");
