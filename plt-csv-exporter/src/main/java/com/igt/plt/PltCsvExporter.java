@@ -65,10 +65,12 @@ public class PltCsvExporter {
             final String favFileName = outPath + "/favorite-wager-" + sdf.format(now) + "-" + exportRound + ".csv";
             final String favBsFileName = outPath + "/favorite-stack-" + sdf.format(now) + "-" + exportRound + ".csv";
             final String favBFileName = outPath + "/favorite-board-" + sdf.format(now) + "-" + exportRound + ".csv";
+            final String favGroupFileName = outPath + "/favorite-group-" + sdf.format(now) + "-" + exportRound + ".csv";
             final String batchArgs = getUniqueInstanceId(jobName) + ",COMMIT:" + commit //
                     + ",FAVFILEPATH:" + favFileName //
                     + ",FAVBSFILEPATH:" + favBsFileName //
                     + ",FAVBFILEPATH:" + favBFileName //
+                    + ",FAVGROUPFILEPATH:" + favGroupFileName //
                     ;
             executionId = jobOperator.start(jobName, batchArgs);
         } else {

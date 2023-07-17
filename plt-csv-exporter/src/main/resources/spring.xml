@@ -193,6 +193,42 @@
             <bean class="com.igt.plt.fav.FavRowMapper"/>
         </property>
     </bean>
+
+    <bean id="favGroupReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="queryProvider">
+            <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+                <property name="dataSource" ref="dataSource"/>
+                <property name="selectClause" value="SELECT IDDGFAVORITEWAGERGROUP,IDDGFAVORITEWAGERGROUPNUMBER,IDDGFAVORITEWAGERGROUPNAME,PLAYERID"/>
+                <property name="fromClause" value="FROM GIS.DGFAVORITEWAGERGROUP"/>
+                <property name="sortKey" value="IDDGFAVORITEWAGERGROUP"/>
+            </bean>
+        </property>
+        <property name="pageSize" value="1000"/>
+        <property name="rowMapper">
+            <bean class="com.igt.plt.fav.FavGroupRowMapper"/>
+        </property>
+    </bean>
+
+    <bean id="favGroupWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+        <!--    <bean id="favWriter" class="com.igt.plt.ConsoleWriter" scope="step">-->
+        <property name="name" value="favGroupWriter" />
+        <!--        <property name="silent" value="true" />-->
+        <property name="resource">
+            <bean class="org.springframework.core.io.FileSystemResource">
+                <constructor-arg name="path" value="#{jobParameters['FAVGROUPFILEPATH']}" />
+            </bean>
+        </property>
+        <property name="lineAggregator">
+            <bean class="com.igt.plt.fav.FavGroupLineAggregator" />
+        </property>
+        <property name="headerCallback">
+            <bean class="com.igt.plt.HeaderWriter" >
+                <constructor-arg name="header" value="iddgfavoritewagergroup,iddgfavoritewagergroupnumber,iddgfavoritewagergroupname,playerid" />
+            </bean>
+        </property>
+    </bean>
+
     <bean id="compositeFavWriter" class="org.springframework.batch.item.support.CompositeItemWriter" scope="step">
         <property name="delegates">
             <list>
@@ -286,6 +322,16 @@
                 <batch:chunk reader="favBoardReader"
                              processor="emptyProcessor"
                              writer="favBWriter"
+                             commit-interval="#{jobParameters['COMMIT']}">
+                </batch:chunk>
+            </batch:tasklet>
+            <batch:next on="*" to="favGroup"/>
+        </batch:step>
+        <batch:step id="favGroup">
+            <batch:tasklet task-executor="pltCsvExporterExecutor" throttle-limit="10">
+                <batch:chunk reader="favGroupReader"
+                             processor="emptyProcessor"
+                             writer="favGroupWriter"
                              commit-interval="#{jobParameters['COMMIT']}">
                 </batch:chunk>
             </batch:tasklet>
