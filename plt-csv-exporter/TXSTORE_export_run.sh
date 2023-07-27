@@ -37,44 +37,47 @@ fi
 script_full_path="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 ##########################################################################################################################################################################################
+# Declare log file
+logfile="scriptlog.log"
+echo "" | tee -a $logfile
+echo "------------ Start TXSTORE export ------------" | tee -a $logfile
+log_with_timestamp() {
+  local current_timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+  echo "" | tee -a $logfile
+  echo "$current_timestamp - $1" | tee -a $logfile
+}
 
-####  create TMP tables for TXSTORE #####
-echo "####### Start Creation of TMP TABLES ##########"
-
-sh ${script_full_path}/TXSTORE_creation.sh
-
-echo "####### Creation done ##########"
 #####################
 db2 connect to pddb
 #####################
 
-echo "####### Count min and max TX_HEADER_ID for current range#######"
+log_with_timestamp "Count min and max TX_HEADER_ID for current range"
 countMIN=$(db2 -x "SELECT MIN(H.TX_HEADER_ID) FROM TXSTORE.TX_HEADER H WHERE H.INSERT_TIMESTAMP>='$startDate' $conditionId")
-echo "min TX_HEADER_ID = $countMIN"
+log_with_timestamp "min TX_HEADER_ID = $countMIN"
 #####################
 countMAX=$(db2 -x "SELECT MAX(H.TX_HEADER_ID) FROM TXSTORE.TX_HEADER H WHERE H.INSERT_TIMESTAMP<=(DATE('$endDate')+1 DAY) AND H.TX_HEADER_ID>$countMIN ")
-echo "max TX_HEADER_ID = $countMAX"
+log_with_timestamp "max TX_HEADER_ID = $countMAX"
 ##########################################################################################################################################################################################
 
-echo "####### TRUNCATE TMP tables #######"
+log_with_timestamp "TRUNCATE TMP tables "
 
-db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY IMMEDIATE"
-db2 "TRUNCATE TABLE TXSTORE.MIGRATED_RESULTS IMMEDIATE"
-db2 "TRUNCATE TABLE TXSTORE.MIGR_TX_HEADER IMMEDIATE"
+db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY IMMEDIATE"| tee -a $logfile
+db2 "TRUNCATE TABLE TXSTORE.MIGRATED_RESULTS IMMEDIATE"| tee -a $logfile
+db2 "TRUNCATE TABLE TXSTORE.MIGR_TX_HEADER IMMEDIATE"| tee -a $logfile
 
 ##########################################################################################################################################################################################
-echo "####### Copy data to MIGR_TX_HEADER from TX_HEADER #######"
+log_with_timestamp "Copy data to MIGR_TX_HEADER from TX_HEADER "
 db2 "INSERT INTO TXSTORE.MIGR_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID)
       SELECT T.TX_HEADER_ID,T.PLAYER_ID,T.UUID
         FROM TXSTORE.TX_HEADER T
         JOIN TXSTORE.LOTTERY_TX_HEADER L
         ON T.TX_HEADER_ID = L.LOTTERY_TX_HEADER_ID
-      WHERE $project_condition T.TX_HEADER_ID BETWEEN $countMIN AND $countMAX"
+      WHERE $project_condition T.TX_HEADER_ID BETWEEN $countMIN AND $countMAX"| tee -a $logfile
 #####################
-echo "####### Copy data to MIGRATED_TX_DRAW_ENTRY from DGGAMEEVENT #######"
-db2 "call TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()"
+log_with_timestamp "Copy data to MIGRATED_TX_DRAW_ENTRY from DGGAMEEVENT "
+db2 "call TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()"| tee -a $logfile
 #####################
-echo "####### Copy data to MIGRATED_RESULTS from LOTTERY_TX_HEADER #######"
+log_with_timestamp "Copy data to MIGRATED_RESULTS from LOTTERY_TX_HEADER "
 db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,PRODUCT,TRANSACTION_AMOUNT,TRANSACTION_TIME_UTC,TX_DRAW_ENTRY_ID,UUID,DATA)
 	SELECT TXSTORE.MIGRATED_RESULTS_SEQ.NEXTVAL,LTV.LOTTERY_TX_HEADER_ID,DE.DRAWNUMBER,LTV.PRODUCT,LTV.TRANSACTION_AMOUNT,LTV.TRANSACTION_TIME_UTC,DE.ID,VTH.UUID,BV.DATA
   FROM TXSTORE.LOTTERY_TX_HEADER LTV
@@ -86,12 +89,15 @@ db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,P
            JOIN TXSTORE.STRING_TX_BODY BV ON BV.UUID=VTH.UUID
            JOIN TXSTORE.MIGRATED_TX_DRAW_ENTRY DE ON TH.UUID = DE.UUID
       AND DE.DRAWNUMBER = LTV.START_DRAW_NUMBER
-  WHERE LTV.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'"
+  WHERE LTV.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'"| tee -a $logfile
 #####################
-echo "####### Starting -JAR csv-exporter for txExport #######"
+log_with_timestamp "Starting -JAR csv-exporter for txExport "
 if [ "$project" = "KY" ]; then
 	/tmp/java8/jre1.8.0_202/bin/java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
 elif [ "$project" = "RI" ]; then
   java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
 fi
 #####################
+
+echo "" | tee -a $logfile
+echo "------------ END export ------------" | tee -a $logfile

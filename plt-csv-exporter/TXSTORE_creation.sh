@@ -1,17 +1,26 @@
 #!/bin/bash
 
+# Declare log file
+logfile="scriptlog.log"
+echo "" | tee -a $logfile
+echo "------------ Start creation ------------" | tee -a $logfile
+log_with_timestamp() {
+  local current_timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+  echo "" | tee -a $logfile
+  echo "$current_timestamp - $1" | tee -a $logfile
+}
 #--:::::::::::::::::::::::::::::::TXSTORE:::::::::::::::::::::::::::
 
 start_table="BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '42710' BEGIN END; EXECUTE IMMEDIATE '"
 start_index="BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '01550' BEGIN END; EXECUTE IMMEDIATE '"
 end="';END"
 
-##########    Create TMP table MIGRATED_TX_TRANSACTION    ##################
+##########    Create TMP table MIGRATED_TX_TRANSACTION   ###########
 
 #####################
 db2 connect to pddb
 #####################
-
+log_with_timestamp "CREATE TABLE MIGRATED_TX_TRANSACTION"
 db2 "$start_table CREATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION (
                             tx_transaction_id int NOT NULL,
                             global_trans_id varchar(50) NULL,
@@ -34,28 +43,33 @@ db2 "$start_table CREATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION (
                             is_open varchar(10),
                             site_json_data varchar(100) NULL,
                             serial_number varchar(30) NULL)
-      $end"
+      $end" | tee -a $logfile
 
-##########    Create TMP table MIGR_TX_HEADER    ##################
+###   Create TMP table MIGR_TX_HEADER  ####
 
+log_with_timestamp "CREATE TABLE MIGR_TX_HEADER"
 db2 "$start_table
       create table TXSTORE.MIGR_TX_HEADER(
           TX_HEADER_ID BIGINT not null constraint XPKMIGR_TX_HEADER primary key,
           PLAYER_ID    BIGINT not null,
           UUID         VARCHAR(200))
-      $end"
+      $end" | tee -a $logfile
 
+log_with_timestamp "CREATE INDEX MIGR_TX_HEADER (UUID)"
 db2 " $start_index
       create unique index TXSTORE.UQIDXMIGR_TX_HEADER
           on TXSTORE.MIGR_TX_HEADER (UUID)
-      $end"
+      $end" | tee -a $logfile
+
+log_with_timestamp "CREATE INDEX MIGR_TX_HEADER (PLAYER_ID)"
 db2 " $start_index
       create index TXSTORE.XIDXMIGR_TX_HEADERPLAYERID
           on TXSTORE.MIGR_TX_HEADER (PLAYER_ID)
-      $end"
+      $end" | tee -a $logfile
 
-##########    Create VIEW  VIEW_MIGRATED_TX    ##################
+###   Create VIEW  VIEW_MIGRATED_TX  ####
 
+log_with_timestamp "CREATE VIEW VIEW_MIGRATED_TX"
 db2 "CREATE OR REPLACE VIEW TXSTORE.VIEW_MIGRATED_TX AS
       SELECT
         H.TX_HEADER_ID,
@@ -77,11 +91,12 @@ db2 "CREATE OR REPLACE VIEW TXSTORE.VIEW_MIGRATED_TX AS
         L.JOURNAL_ADDRESS
         FROM TXSTORE.MIGR_TX_HEADER H
              INNER JOIN TXSTORE.LOTTERY_TX_HEADER L ON L.LOTTERY_TX_HEADER_ID=H.TX_HEADER_ID
-             INNER JOIN TXSTORE.STRING_TX_BODY B ON B.UUID=H.UUID"
+             INNER JOIN TXSTORE.STRING_TX_BODY B ON B.UUID=H.UUID" | tee -a $logfile
 
 
-##########    Create TABLE  MIGRATED_TX_DRAW_ENTRY    ##################
+###   Create TABLE  MIGRATED_TX_DRAW_ENTRY  ####
 
+log_with_timestamp "CREATE TABLE MIGRATED_TX_DRAW_ENTRY"
 db2 " $start_table
       CREATE TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY(
           ID BIGINT NOT NULL,
@@ -90,21 +105,31 @@ db2 " $start_table
           PRODUCT INTEGER NOT NULL,
           WIN_STATUS VARCHAR(50) NOT NULL,
           CONSTRAINT XPKMIGRATED_TX_DRAW_ENTRY PRIMARY KEY (ID))
-      $end"
+      $end" | tee -a $logfile
 
-db2 " CREATE or REPLACE SEQUENCE TXSTORE.MIGRATED_TX_DRAW_ENTRY_SEQ INCREMENT BY 1 START WITH 1"
+###   CREATE SEQUENCE  MIGRATED_TX_DRAW_ENTRY_SEQ   ###########
+log_with_timestamp "CREATE SEQUENCE MIGRATED_TX_DRAW_ENTRY_SEQ"
+db2 " CREATE or REPLACE SEQUENCE TXSTORE.MIGRATED_TX_DRAW_ENTRY_SEQ INCREMENT BY 1 START WITH 1" | tee -a $logfile
 
+###   CREATE INDEX  MIGRATED_TX_DRAW_ENTRY  ( UUID ASC ) ###########
+log_with_timestamp "CREATE INDEX MIGRATED_TX_DRAW_ENTRY ( UUID ASC )"
 db2 " $start_index
       CREATE INDEX TXSTORE.IDXMIGRATED_TX_DRAW_ENTRY ON TXSTORE.MIGRATED_TX_DRAW_ENTRY ( UUID ASC )
-      $end"
+      $end" | tee -a $logfile
 
+###   CREATE INDEX  LOTTERY_TX_HEADER  (GLOBAL_TRANS_ID,START_DRAW_NUMBER,LOTTERY_TRANSACTION_TYPE) ###########
+log_with_timestamp "CREATE INDEX LOTTERY_TX_HEADER (GLOBAL_TRANS_ID,START_DRAW_NUMBER,LOTTERY_TRANSACTION_TYPE)"
 db2 " $start_index
-      CREATE index TXSTORE.LOTTERY_TX_HEADER_GLOBAL_TRANS_ID_START_DRAW_NUMBER
+      CREATE INDEX TXSTORE.LOTTERY_TX_HEADER_GLOBAL_TRANS_ID_START_DRAW_NUMBER
           on TXSTORE.LOTTERY_TX_HEADER (GLOBAL_TRANS_ID,START_DRAW_NUMBER,LOTTERY_TRANSACTION_TYPE)
-      $end"
+      $end" | tee -a $logfile
 
-db2 "REORG INDEXES ALL FOR TABLE TXSTORE.LOTTERY_TX_HEADER"
+###   REORG INDEXES on LOTTERY_TX_HEADER ###########
+log_with_timestamp "REORG INDEXES on LOTTERY_TX_HEADER"
+db2 "REORG INDEXES ALL FOR TABLE TXSTORE.LOTTERY_TX_HEADER" | tee -a $logfile
 
+###   CREATE PROCEDURE INSERT_INTO_MIGRATED_TX_DRAW_ENTRY ###########
+log_with_timestamp "CREATE PROCEDURE INSERT_INTO_MIGRATED_TX_DRAW_ENTRY"
 db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
          DYNAMIC RESULT SETS 1
          LANGUAGE SQL
@@ -171,9 +196,10 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
                  END IF;
          END WHILE;
      CLOSE LOTTERY_TX_HEADER_FOR_ECH_WAGER;
-     END"
-##########    Create VIEW  MIGRATED_TX_DRAW    ##################
+     END" | tee -a $logfile
 
+###   Create VIEW  MIGRATED_TX_DRAW   ###########
+log_with_timestamp "CREATE VIEW MIGRATED_TX_DRAW"
 db2 "CREATE OR REPLACE VIEW TXSTORE.MIGRATED_TX_DRAW AS
   SELECT
     E.IDDGGAMEEVENT,
@@ -182,13 +208,15 @@ db2 "CREATE OR REPLACE VIEW TXSTORE.MIGRATED_TX_DRAW AS
     E.DRAWDATE
   FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY DE
        INNER JOIN GIS.DGGAMEEVENT E ON E.IDDGGAME=DE.PRODUCT AND E.DRAWNUMBER=DE.DRAWNUMBER
-  GROUP BY E.IDDGGAMEEVENT,E.IDDGGAME,E.DRAWNUMBER,E.DRAWDATE"
+  GROUP BY E.IDDGGAMEEVENT,E.IDDGGAME,E.DRAWNUMBER,E.DRAWDATE" | tee -a $logfile
 
+###   CREATE SEQUENCE  MIGRATED_RESULTS_SEQ   ###########
+log_with_timestamp "CREATE SEQUENCE  MIGRATED_RESULTS_SEQ"
+db2 "CREATE or REPLACE SEQUENCE TXSTORE.MIGRATED_RESULTS_SEQ INCREMENT BY 1 START WITH 1" | tee -a $logfile
 
-
-db2 "CREATE or REPLACE SEQUENCE TXSTORE.MIGRATED_RESULTS_SEQ INCREMENT BY 1 START WITH 1"
-
-ind='IN "TS_TXST" INDEX IN "TS_TXST_IDX"'
+###   CREATE TABLE MIGRATED_RESULTS   ###########
+log_with_timestamp "CREATE TABLE MIGRATED_RESULTS"
+index='IN "TS_TXST" INDEX IN "TS_TXST_IDX"'
 db2 " $start_table
       CREATE TABLE TXSTORE.MIGRATED_RESULTS (
         ID BIGINT NOT NULL constraint XPMIGRATED_RESULTS primary key,
@@ -199,4 +227,157 @@ db2 " $start_table
         TRANSACTION_TIME_UTC TIMESTAMP NOT NULL,
         TX_DRAW_ENTRY_ID BIGINT NOT NULL,
         UUID VARCHAR(200),
-    DATA XML) $ind $end"
+    DATA XML) $index $end" | tee -a $logfile
+
+###   CREATE TABLE BATCH_JOB_INSTANCE   ###########
+log_with_timestamp "CREATE TABLE BATCH_JOB_INSTANCE"
+db2 " $start_table
+      create table GIS.BATCH_JOB_INSTANCE
+      (
+          JOB_INSTANCE_ID BIGINT       not null primary key,
+          VERSION         BIGINT,
+          JOB_NAME        VARCHAR(100) not null,
+          JOB_KEY         VARCHAR(32)  not null,
+          constraint JOB_INST_UN unique (JOB_NAME, JOB_KEY)
+      ) $end" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_INSTANCE"
+db2 "grant select on table GIS.BATCH_JOB_INSTANCE to GTDBVWO1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_INSTANCE to GTDBDEV1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_INSTANCE to GTDBAPP1" | tee -a $logfile
+
+###   CREATE TABLE BATCH_JOB_EXECUTION   ###########
+log_with_timestamp "CREATE TABLE BATCH_JOB_EXECUTION"
+db2 " $start_table
+     create table GIS.BATCH_JOB_EXECUTION
+      (
+          JOB_EXECUTION_ID           BIGINT       not null
+              primary key,
+          VERSION                    BIGINT,
+          JOB_INSTANCE_ID            BIGINT       not null
+              constraint JOB_INST_EXEC_FK
+                  references GIS.BATCH_JOB_INSTANCE,
+          CREATE_TIME                TIMESTAMP(6) not null,
+          START_TIME                 TIMESTAMP(6) default NULL,
+          END_TIME                   TIMESTAMP(6) default NULL,
+          STATUS                     VARCHAR(10),
+          EXIT_CODE                  VARCHAR(2500),
+          EXIT_MESSAGE               VARCHAR(2500),
+          LAST_UPDATED               TIMESTAMP(6),
+          JOB_CONFIGURATION_LOCATION VARCHAR(2500)
+      )$end" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_INSTANCE"
+db2 "grant select on table GIS.BATCH_JOB_EXECUTION to GTDBVWO1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_EXECUTION to GTDBAPP1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_EXECUTION to GTDBDEV1" | tee -a $logfile
+
+###   CREATE TABLE BATCH_JOB_EXECUTION_CONTEXT   ###########
+log_with_timestamp "CREATE TABLE BATCH_JOB_EXECUTION_CONTEXT"
+db2 " $start_table
+     create table GIS.BATCH_JOB_EXECUTION_CONTEXT
+      (
+          JOB_EXECUTION_ID   BIGINT        not null
+              primary key
+              constraint JOB_EXEC_CTX_FK
+                  references GIS.BATCH_JOB_EXECUTION,
+          SHORT_CONTEXT      VARCHAR(2500) not null,
+          SERIALIZED_CONTEXT CLOB(1048576)
+      )$end" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_INSTANCE"
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_EXECUTION_CONTEXT to GTDBDEV1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_EXECUTION_CONTEXT to GTDBAPP1" | tee -a $logfile
+db2 "grant select on table GIS.BATCH_JOB_EXECUTION_CONTEXT to GTDBVWO1" | tee -a $logfile
+
+###   CREATE TABLE BATCH_JOB_EXECUTION_PARAMS   ###########
+log_with_timestamp "CREATE TABLE BATCH_JOB_EXECUTION_PARAMS"
+db2 " $start_table
+     create table GIS.BATCH_JOB_EXECUTION_PARAMS
+      (
+          JOB_EXECUTION_ID BIGINT       not null
+              constraint JOB_EXEC_PARAMS_FK
+                  references GIS.BATCH_JOB_EXECUTION,
+          TYPE_CD          VARCHAR(6)   not null,
+          KEY_NAME         VARCHAR(100) not null,
+          STRING_VAL       VARCHAR(250),
+          DATE_VAL         TIMESTAMP(6) default NULL,
+          LONG_VAL         BIGINT,
+          DOUBLE_VAL       DOUBLE,
+          IDENTIFYING      CHARACTER(1) not null
+      )$end" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_INSTANCE"
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_EXECUTION_PARAMS to GTDBDEV1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_JOB_EXECUTION_PARAMS to GTDBAPP1" | tee -a $logfile
+db2 "grant select on table GIS.BATCH_JOB_EXECUTION_PARAMS to GTDBVWO1" | tee -a $logfile
+
+###   CREATE TABLE BATCH_STEP_EXECUTION   ###########
+log_with_timestamp "CREATE TABLE BATCH_STEP_EXECUTION"
+db2 " $start_table
+     create table GIS.BATCH_STEP_EXECUTION
+      (
+          STEP_EXECUTION_ID  BIGINT       not null
+              primary key,
+          VERSION            BIGINT       not null,
+          STEP_NAME          VARCHAR(100) not null,
+          JOB_EXECUTION_ID   BIGINT       not null
+              constraint JOB_EXEC_STEP_FK
+                  references GIS.BATCH_JOB_EXECUTION,
+          START_TIME         TIMESTAMP(6) not null,
+          END_TIME           TIMESTAMP(6) default NULL,
+          STATUS             VARCHAR(10),
+          COMMIT_COUNT       BIGINT,
+          READ_COUNT         BIGINT,
+          FILTER_COUNT       BIGINT,
+          WRITE_COUNT        BIGINT,
+          READ_SKIP_COUNT    BIGINT,
+          WRITE_SKIP_COUNT   BIGINT,
+          PROCESS_SKIP_COUNT BIGINT,
+          ROLLBACK_COUNT     BIGINT,
+          EXIT_CODE          VARCHAR(2500),
+          EXIT_MESSAGE       VARCHAR(2500),
+          LAST_UPDATED       TIMESTAMP(6)
+      )$end" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_INSTANCE"
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_STEP_EXECUTION to GTDBDEV1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_STEP_EXECUTION to GTDBAPP1" | tee -a $logfile
+db2 "grant select on table GIS.BATCH_STEP_EXECUTION to GTDBVWO1" | tee -a $logfile
+
+###   CREATE TABLE BATCH_STEP_EXECUTION_CONTEXT   ###########
+log_with_timestamp "CREATE TABLE BATCH_STEP_EXECUTION_CONTEXT"
+db2 " $start_table
+     create table GIS.BATCH_STEP_EXECUTION_CONTEXT
+      (
+          STEP_EXECUTION_ID  BIGINT        not null
+              primary key
+              constraint STEP_EXEC_CTX_FK
+                  references GIS.BATCH_STEP_EXECUTION,
+          SHORT_CONTEXT      VARCHAR(2500) not null,
+          SERIALIZED_CONTEXT CLOB(1048576)
+      )$end" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_INSTANCE"
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_STEP_EXECUTION_CONTEXT to GTDBDEV1" | tee -a $logfile
+db2 "grant alter, delete, index, insert, references, select, update on table GIS.BATCH_STEP_EXECUTION_CONTEXT to GTDBAPP1" | tee -a $logfile
+db2 "grant select on table GIS.BATCH_STEP_EXECUTION_CONTEXT to GTDBVWO1" | tee -a $logfile
+
+###   CREATE SEQUENCE  BATCH_JOB_EXECUTION_SEQ   ###########
+log_with_timestamp "CREATE SEQUENCE BATCH_JOB_EXECUTION_SEQ"
+db2 "CREATE or REPLACE sequence GIS.BATCH_JOB_EXECUTION_SEQ as BIGINT" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_EXECUTION_SEQ"
+db2 "grant alter, usage on sequence GIS.BATCH_JOB_EXECUTION_SEQ to GTDBAPP1" | tee -a $logfile
+db2 "grant alter, usage on sequence GIS.BATCH_JOB_EXECUTION_SEQ to GTDBDEV1" | tee -a $logfile
+
+###   CREATE SEQUENCE  BATCH_JOB_SEQ   ###########
+log_with_timestamp "CREATE SEQUENCE BATCH_JOB_SEQ"
+db2 "CREATE or REPLACE sequence GIS.BATCH_JOB_SEQ as BIGINT" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_JOB_SEQ"
+db2 "grant alter, usage on sequence GIS.BATCH_JOB_SEQ to GTDBDEV1" | tee -a $logfile
+db2 "grant alter, usage on sequence GIS.BATCH_JOB_SEQ to GTDBAPP1" | tee -a $logfile
+
+
+###   CREATE SEQUENCE  BATCH_JOB_SEQ   ###########
+log_with_timestamp "CREATE SEQUENCE BATCH_STEP_EXECUTION_SEQ"
+db2 "CREATE or REPLACE sequence GIS.BATCH_STEP_EXECUTION_SEQ as BIGINT" | tee -a $logfile
+log_with_timestamp "grant access to BATCH_STEP_EXECUTION_SEQ"
+db2 "grant alter, usage on sequence GIS.BATCH_STEP_EXECUTION_SEQ to GTDBDEV1" | tee -a $logfile
+db2 "grant alter, usage on sequence GIS.BATCH_STEP_EXECUTION_SEQ to GTDBAPP1" | tee -a $logfile
+
+echo "" | tee -a $logfile
+echo "------------ END creation ------------" | tee -a $logfile
