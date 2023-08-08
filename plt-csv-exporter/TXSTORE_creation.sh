@@ -40,7 +40,6 @@ db2 "$start_table CREATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION (
                             product_id int NULL,
                             start_draw_number int NULL,
                             end_draw_number int NULL,
-                            is_open varchar(10),
                             site_json_data varchar(100) NULL,
                             serial_number varchar(30) NULL)
       $end" | tee -a $logfile

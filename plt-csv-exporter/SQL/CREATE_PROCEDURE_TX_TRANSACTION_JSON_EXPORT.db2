@@ -42,6 +42,9 @@ BEGIN
     DECLARE V_DRAW INTEGER;
     DECLARE V_DIVISION INTEGER;
     DECLARE V_COUNT_COMMIT INTEGER;
+    DECLARE V_CHANNEL_ID INTEGER;
+    DECLARE V_SYSTEM_ID INTEGER;
+    DECLARE V_SERIAL_NUMBER VARCHAR(30);
     DECLARE MIGRATED_TX_CURSOR CURSOR WITH HOLD FOR
         SELECT TX_HEADER_ID, GLOBAL_TRANS_ID, CORRELATION_ID, UUID, PLAYER_ID,
                TRANSACTION_TIME_UTC, LOTTERY_TRANSACTION_TYPE, TRANSACTION_AMOUNT,
@@ -62,11 +65,21 @@ BEGIN
             SET V_JSON ='';
             IF V_PROJECT='KY' THEN
                 SET V_JURISDICTION=16;
+                SET V_CHANNEL_ID=5002;
+                SET V_SYSTEM_ID=5008;
             elseif V_PROJECT='RI' THEN
                 SET V_JURISDICTION=8;
+                SET V_CHANNEL_ID=5002;
+                SET V_SYSTEM_ID=5012;
+                IF XMLEXISTS('$V_DATA/balanceTransaction/channel' PASSING V_DATA AS "V_DATA") THEN
+                    SELECT XMLCAST(XMLQUERY('$V_DATA/balanceTransaction/channel/text()' PASSING V_DATA AS "V_DATA") AS INT) INTO V_CHANNEL_ID FROM SYSIBM.SYSDUMMY1;
+                end if;
+                IF XMLEXISTS('$V_DATA/balanceTransaction/sub-channel' PASSING V_DATA AS "V_DATA") THEN
+                    SELECT XMLCAST(XMLQUERY('$V_DATA/balanceTransaction/sub-channel/text()' PASSING V_DATA AS "V_DATA") AS INT) INTO V_SYSTEM_ID FROM SYSIBM.SYSDUMMY1;
+                end if;
             end if;
             CALL TXSTORE.RemoveXmlns(V_DATA);
---             CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('V_DATA' || XMLSERIALIZE(V_DATA AS VARCHAR(2000)));
+            --             CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('V_DATA' || XMLSERIALIZE(V_DATA AS VARCHAR(2000)));
             --- list of draw id`s ----
             if V_START_DRAW_NUMBER is null or V_END_DRAW_NUMBER is null then
                 SET V_DRAW_IDS ='';
@@ -204,6 +217,16 @@ BEGIN
             end if;
             INSERT INTO TXSTORE.MIGRATED_TX_JSON (uuid,json
             ) VALUES (V_UUID,V_JSON);
+            SET V_SERIAL_NUMBER = V_CDC||'-'||V_SERIAL||'-'||V_PRODUCT;
+            insert into TXSTORE.MIGRATED_TX_TRANSACTION (TX_TRANSACTION_ID, GLOBAL_TRANS_ID, CORRELATION_ID,
+                                                         UUID, PLAYER_ID,TRANSACTION_TIME, TRANSACTION_TYPE, CHANNEL_ID, SYSTEM_ID, TRANSACTION_AMOUNT,
+                                                         TRANSACTION_DISCOUNT_AMOUNT, CURRENCY, SERIAL, CDC, GAME_ENGINE_TRANSACTION_TIME,
+                                                         PRODUCT_ID, START_DRAW_NUMBER, END_DRAW_NUMBER, SITE_JSON_DATA,
+                                                         SERIAL_NUMBER)
+            values (V_TX_HEADER_ID,V_GLOBAL_TRANS_ID,V_CORRELATION_ID, V_UUID, V_PLAYER_ID,
+                    V_TRANSACTION_TIME_UTC, V_LOTTERY_TRANSACTION_TYPE,V_CHANNEL_ID,V_SYSTEM_ID,V_TRANSACTION_AMOUNT,
+                    NULL,'USD', V_SERIAL, V_CDC,V_TRANSACTION_TIME_LOCAL,V_PRODUCT,V_START_DRAW_NUMBER,V_END_DRAW_NUMBER,
+                    null,V_SERIAL_NUMBER);
             IF(V_COUNT_COMMIT = 10000) THEN
                 SET V_COUNT_COMMIT = 1;
                 COMMIT ;

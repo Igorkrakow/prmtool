@@ -2,11 +2,11 @@
 # The following three lines have been added by UDB DB2.
 # To run this file use command: sh export_.sh "sql(java)" "KY(RI)" "2023-01-01 00:00:00.000000" "2023-06-23 00:00:00.000000" 1929238
 #######   set variable ########
-if [ $# -lt 3 ];
+if [ $# -lt 4 ];
 then
   echo "$0: Missing arguments"
   exit 1
-elif [ $# -gt 4 ];
+elif [ $# -gt 5 ];
 then
   echo "$0: Too many arguments: $@"
   exit 1
@@ -17,7 +17,7 @@ else
   endDate=$4
   minId=$5
 fi
-if [[ ($# -eq 4)&&(-z $minId) ]];
+if [[ ($# -eq 5)&&(-z $minId) ]];
 then
 	conditionId=""
 else
@@ -66,6 +66,7 @@ db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGRATED_RESULTS IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGR_TX_HEADER IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_JSON IMMEDIATE"| tee -a $logfile
+db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION IMMEDIATE"| tee -a $logfile
 
 ##########################################################################################################################################################################################
 log_with_timestamp "Copy data to MIGR_TX_HEADER from TX_HEADER "
@@ -101,6 +102,7 @@ if [ "$tool" = "java" ]; then
     java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
   fi
 elif [ "$tool" = "sql" ]; then
+  log_with_timestamp "Starting Create Json and tx-transaction files"
   db2 "call TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT => '$project');"| tee -a $logfile
   sh SQL/file_generation.sh "$endDate"
 fi
