@@ -381,3 +381,25 @@ db2 "grant alter, usage on sequence GIS.BATCH_STEP_EXECUTION_SEQ to GTDBAPP1" | 
 
 echo "" | tee -a $logfile
 echo "------------ END creation ------------" | tee -a $logfile
+
+###   CREATE TABLE MIGRATED_TX_JSON   ###########
+log_with_timestamp "CREATE TABLE MIGRATED_TX_JSON"
+db2 " $start_table
+     create table GIS.BATCH_STEP_EXECUTION_CONTEXT
+      (
+          UUID VARCHAR(200),
+          JSON VARCHAR(20000)
+      )$end" | tee -a $logfile
+
+###   CREATE PROCEDURE to handle primarry/secondary board-data ###########
+log_with_timestamp "CREATE PROCEDURE to handle primarry/secondary board-data"
+db2 -td@ -vf SQL/CREATE_OR_REPLACE_PROCEDURE_TXSTORE.HANDLE_PART.db2.db2 | tee -a $logfile
+
+###   CREATE PROCEDURE RemoveXmlns ###########
+log_with_timestamp "CREATE PROCEDURE RemoveXmlns"
+db2 -td@ -vf SQL/CREATE_PROCEDURE_RemoveXmlns.db2 | tee -a $logfile
+
+###   CREATE PROCEDURE TX_TRANSACTION_JSON_EXPORT ###########
+log_with_timestamp "CREATE PROCEDURE TX_TRANSACTION_JSON_EXPORT"
+db2 -td@ -vf SQL/CREATE_PROCEDURE_TX_TRANSACTION_JSON_EXPORT.db2 | tee -a $logfile
+

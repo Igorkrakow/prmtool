@@ -1,6 +1,6 @@
 #!/bin/bash
 # The following three lines have been added by UDB DB2.
-# To run this file use command: sh export_.sh "KY(RI)" "2023-01-01 00:00:00.000000" "2023-06-23 00:00:00.000000" 1929238
+# To run this file use command: sh export_.sh "sql(java)" "KY(RI)" "2023-01-01 00:00:00.000000" "2023-06-23 00:00:00.000000" 1929238
 #######   set variable ########
 if [ $# -lt 3 ];
 then
@@ -11,12 +11,13 @@ then
   echo "$0: Too many arguments: $@"
   exit 1
 else
-  project=$1
-  startDate=$2
-  endDate=$3
-  minId=$4
+  tool=$1
+  project=$2
+  startDate=$3
+  endDate=$4
+  minId=$5
 fi
-if [[ ($# -eq 3)&&(-z $minId) ]];
+if [[ ($# -eq 4)&&(-z $minId) ]];
 then
 	conditionId=""
 else
@@ -91,11 +92,16 @@ db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,P
       AND DE.DRAWNUMBER = LTV.START_DRAW_NUMBER
   WHERE LTV.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'"| tee -a $logfile
 #####################
-log_with_timestamp "Starting -JAR csv-exporter for txExport "
-if [ "$project" = "KY" ]; then
-	/tmp/java8/jre1.8.0_202/bin/java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
-elif [ "$project" = "RI" ]; then
-  java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
+if [ "$tool" = "java" ]; then
+  log_with_timestamp "Starting -JAR csv-exporter for txExport "
+  if [ "$project" = "KY" ]; then
+    /tmp/java8/jre1.8.0_202/bin/java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
+  elif [ "$project" = "RI" ]; then
+    java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
+  fi
+elif [ "$tool" = "sql" ]; then
+  db2 "call TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT => '$project');"| tee -a $logfile
+  sh SQL/file_generation.sh "$endDate"
 fi
 #####################
 
