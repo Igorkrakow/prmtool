@@ -65,6 +65,7 @@ log_with_timestamp "TRUNCATE TMP tables "
 db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGRATED_RESULTS IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGR_TX_HEADER IMMEDIATE"| tee -a $logfile
+db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_JSON IMMEDIATE"| tee -a $logfile
 
 ##########################################################################################################################################################################################
 log_with_timestamp "Copy data to MIGR_TX_HEADER from TX_HEADER "

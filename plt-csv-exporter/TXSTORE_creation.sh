@@ -145,6 +145,7 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
          DECLARE v_UUID VARCHAR(200);
          DECLARE v_GLOBAL_TRANS_ID VARCHAR(50);
          DECLARE V_COUNT_VALIDATION INT;
+         DECLARE V_COUNT_COMMIT INTEGER;
          -- Declare cursor
          DECLARE LOTTERY_TX_HEADER_FOR_ECH_WAGER CURSOR WITH HOLD FOR
              SELECT
@@ -167,6 +168,7 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
          FETCH LOTTERY_TX_HEADER_FOR_ECH_WAGER INTO v_LOTTERY_TX_HEADER_ID,
              v_START_DRAW_NUMBER, v_END_DRAW_NUMBER,v_PRODUCT,v_UUID,v_GLOBAL_TRANS_ID;
 
+         SET V_COUNT_COMMIT = 1;
          WHILE (V_SQLCODE = 0) DO
                  SET v_DRAW_NUMBER = v_START_DRAW_NUMBER;
                  WHILE (v_DRAW_NUMBER <= v_END_DRAW_NUMBER) DO
@@ -185,7 +187,12 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
                                     v_PRODUCT,
                                     CASE WHEN V_COUNT_VALIDATION >= 1 THEN 'WINNING' ELSE 'NON_WINNING' END
                                 );
-                         commit;
+                         IF(V_COUNT_COMMIT = 10000) THEN
+                                         SET V_COUNT_COMMIT = 1;
+                                         COMMIT ;
+                                     ELSE
+                                         SET V_COUNT_COMMIT = V_COUNT_COMMIT + 1;
+                                     end if;
                      SET v_DRAW_NUMBER = v_DRAW_NUMBER + 1;
                  END WHILE;
                  SET V_SQLCODE = 0;
