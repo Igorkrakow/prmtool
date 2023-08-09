@@ -217,7 +217,16 @@ BEGIN
             end if;
             INSERT INTO TXSTORE.MIGRATED_TX_JSON (uuid,json
             ) VALUES (V_UUID,V_JSON);
+            IF (V_SQLCODE != 0) THEN
+                                        CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
+                                    END IF;
             SET V_SERIAL_NUMBER = V_CDC||'-'||V_SERIAL||'-'||V_PRODUCT;
+            if V_CORRELATION_ID is null then
+                            SET V_CORRELATION_ID='';
+                        end if;
+                        if V_GLOBAL_TRANS_ID is null then
+                            SET V_GLOBAL_TRANS_ID='';
+                        end if;
             insert into TXSTORE.MIGRATED_TX_TRANSACTION (TX_TRANSACTION_ID, GLOBAL_TRANS_ID, CORRELATION_ID,
                                                          UUID, PLAYER_ID,TRANSACTION_TIME, TRANSACTION_TYPE, CHANNEL_ID, SYSTEM_ID, TRANSACTION_AMOUNT,
                                                          TRANSACTION_DISCOUNT_AMOUNT, CURRENCY, SERIAL, CDC, GAME_ENGINE_TRANSACTION_TIME,
@@ -227,15 +236,15 @@ BEGIN
                     V_TRANSACTION_TIME_UTC, V_LOTTERY_TRANSACTION_TYPE,V_CHANNEL_ID,V_SYSTEM_ID,V_TRANSACTION_AMOUNT,
                     NULL,'USD', V_SERIAL, V_CDC,V_TRANSACTION_TIME_LOCAL,V_PRODUCT,V_START_DRAW_NUMBER,V_END_DRAW_NUMBER,
                     null,V_SERIAL_NUMBER);
+            IF (V_SQLCODE != 0) THEN
+                            CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
+                        END IF;
             IF(V_COUNT_COMMIT = 10000) THEN
                 SET V_COUNT_COMMIT = 1;
                 COMMIT ;
             ELSE
                 SET V_COUNT_COMMIT = V_COUNT_COMMIT + 1;
             end if;
-            IF (V_SQLCODE != 0) THEN
-                CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
-            END IF;
             SET V_INDEX=1;
             SET V_SQLCODE = 0;
             FETCH MIGRATED_TX_CURSOR

@@ -113,7 +113,7 @@ db2 terminate
 csvFileName="tx-transaction"
 ###########################
 split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
-for file in json-transaction_unix-*
+for file in tx-transaction_unix-*
 do
 mv "$file" "$file.csv"
 done

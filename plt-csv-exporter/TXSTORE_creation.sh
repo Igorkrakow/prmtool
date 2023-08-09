@@ -31,7 +31,7 @@ db2 "$start_table CREATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION (
                             transaction_type varchar(50) NOT NULL,
                             channel_id varchar(25) NULL,
                             system_id varchar(25) NULL,
-                            transaction_amount int NULL,
+                            transaction_amount bigint NULL,
                             transaction_discount_amount int NULL,
                             currency varchar(10) NULL,
                             serial int NULL,

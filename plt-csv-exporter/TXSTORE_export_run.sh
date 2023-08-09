@@ -17,7 +17,7 @@ else
   endDate=$4
   minId=$5
 fi
-if [[ ($# -eq 5)&&(-z $minId) ]];
+if [[ ($# -eq 4)&&(-z $minId) ]];
 then
 	conditionId=""
 else
