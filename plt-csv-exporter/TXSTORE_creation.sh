@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# To run this file use command: sh TXSTORE_creation.sh "KY(RI)"
 # Declare log file
 logfile="scriptlog.log"
 echo "" | tee -a $logfile
@@ -9,6 +9,15 @@ log_with_timestamp() {
   echo "" | tee -a $logfile
   echo "$current_timestamp - $1" | tee -a $logfile
 }
+project=$1
+if [ "$project" = "KY" ]; then
+	project_condition="D.PRODUCT NOT IN (30,35) AND "
+elif [ "$project" = "RI" ]; then
+  project_condition="D.PRODUCT IN (15) AND "
+else
+  echo "Project with name $project - not exist"
+  exit 1
+fi
 #--:::::::::::::::::::::::::::::::TXSTORE:::::::::::::::::::::::::::
 
 start_table="BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '42710' BEGIN END; EXECUTE IMMEDIATE '"
@@ -156,9 +165,9 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
                  D.GLOBAL_TRANS_ID
              FROM
                  TXSTORE.LOTTERY_TX_HEADER D
-                 INNER JOIN TXSTORE.MIGR_TX_HEADER H
+                 INNER JOIN TXSTORE.TX_HEADER H
                      ON D.LOTTERY_TX_HEADER_ID = H.TX_HEADER_ID
-             WHERE   D.LOTTERY_TRANSACTION_TYPE = 'WAGER';
+             WHERE $project_condition D.LOTTERY_TRANSACTION_TYPE = 'WAGER';
          DECLARE CONTINUE HANDLER FOR SQLEXCEPTION, NOT FOUND, SQLWARNING
              SET V_SQLCODE = SQLCODE;
          -- Open cursor
