@@ -20,6 +20,7 @@ BEGIN
     DECLARE V_SUBSCRIPTION_ID BIGINT;
     DECLARE V_JOURNAL_ADDRESS BIGINT;
     DECLARE V_JURISDICTION INT;
+    DECLARE V_CURRENT_DRAW INTEGER;
     DECLARE V_DATA XML;
     DECLARE V_DRAW_IDS VARCHAR(200);
     DECLARE V_DRAW_ID INT;
@@ -45,6 +46,8 @@ BEGIN
     DECLARE V_CHANNEL_ID INTEGER;
     DECLARE V_SYSTEM_ID INTEGER;
     DECLARE V_SERIAL_NUMBER VARCHAR(30);
+    DECLARE V_OPEN_TX_HEADER_ID BIGINT;
+    DECLARE V_IS_OPEN BOOLEAN;
     DECLARE MIGRATED_TX_CURSOR CURSOR WITH HOLD FOR
         SELECT TX_HEADER_ID, GLOBAL_TRANS_ID, CORRELATION_ID, UUID, PLAYER_ID,
                TRANSACTION_TIME_UTC, LOTTERY_TRANSACTION_TYPE, TRANSACTION_AMOUNT,
@@ -62,6 +65,44 @@ BEGIN
     SET V_COUNT_COMMIT = 1;
     WHILE (V_SQLCODE = 0)
         DO
+        SET V_IS_OPEN = FALSE;
+            ------------  WAGER  ------------
+            IF V_LOTTERY_TRANSACTION_TYPE='WAGER' then
+                SELECT E.DRAWNUMBER INTO V_CURRENT_DRAW FROM GIS.DGGAMEEVENT E
+                                                        INNER JOIN GIS.DGGAME G ON G.IDDGGAME=V_PRODUCT
+                                                        AND G.IDDGGAMEEVENT_CURRENT=E.IDDGGAMEEVENT;
+                IF V_CURRENT_DRAW is NOT null AND V_END_DRAW_NUMBER is NOT null AND V_END_DRAW_NUMBER>V_CURRENT_DRAW
+                    then
+                    SET V_IS_OPEN = TRUE;
+                    insert into TXSTORE.MIGR_OPEN_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID,GLOBAL_TRANS_ID,CDC,SERIAL)
+                    values (V_TX_HEADER_ID,V_PLAYER_ID,V_UUID,V_GLOBAL_TRANS_ID,V_CDC,V_SERIAL);
+                    IF (V_SQLCODE != 0) THEN
+                    CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('Open wager '||'ERROR WHILE INSERT #'||V_SQLCODE);
+                    END IF;
+                    COMMIT;
+
+            end if;
+            end if;
+
+            IF V_LOTTERY_TRANSACTION_TYPE='VALIDATION' then
+
+                SELECT MAX(TX_HEADER_ID) into V_OPEN_TX_HEADER_ID FROM TXSTORE.MIGR_OPEN_TX_HEADER
+                                                             where GLOBAL_TRANS_ID=V_GLOBAL_TRANS_ID or (
+                                                                CDC=V_CDC and SERIAL=V_SERIAL
+
+                    );
+                IF V_OPEN_TX_HEADER_ID is not null then
+                    SET V_IS_OPEN = TRUE;
+                    insert into TXSTORE.MIGR_OPEN_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID,GLOBAL_TRANS_ID,CDC,SERIAL)
+                    values (V_TX_HEADER_ID,V_PLAYER_ID,V_UUID,V_GLOBAL_TRANS_ID,V_CDC,V_SERIAL);
+                    IF (V_SQLCODE != 0) THEN
+                        CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('Open validation '||'ERROR WHILE INSERT #'||V_SQLCODE);
+                    END IF;
+
+                end if;
+            end if;
+
+        IF V_IS_OPEN = FALSE THEN
             SET V_JSON ='';
             IF V_PROJECT='KY' THEN
                 SET V_JURISDICTION=16;
@@ -218,15 +259,15 @@ BEGIN
             INSERT INTO TXSTORE.MIGRATED_TX_JSON (uuid,json
             ) VALUES (V_UUID,V_JSON);
             IF (V_SQLCODE != 0) THEN
-                                        CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
-                                    END IF;
+                CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
+            END IF;
             SET V_SERIAL_NUMBER = V_CDC||'-'||V_SERIAL||'-'||V_PRODUCT;
             if V_CORRELATION_ID is null then
-                            SET V_CORRELATION_ID='';
-                        end if;
-                        if V_GLOBAL_TRANS_ID is null then
-                            SET V_GLOBAL_TRANS_ID='';
-                        end if;
+                SET V_CORRELATION_ID='';
+            end if;
+            if V_GLOBAL_TRANS_ID is null then
+                SET V_GLOBAL_TRANS_ID='';
+            end if;
             insert into TXSTORE.MIGRATED_TX_TRANSACTION (TX_TRANSACTION_ID, GLOBAL_TRANS_ID, CORRELATION_ID,
                                                          UUID, PLAYER_ID,TRANSACTION_TIME, TRANSACTION_TYPE, CHANNEL_ID, SYSTEM_ID, TRANSACTION_AMOUNT,
                                                          TRANSACTION_DISCOUNT_AMOUNT, CURRENCY, SERIAL, CDC, GAME_ENGINE_TRANSACTION_TIME,
@@ -237,24 +278,27 @@ BEGIN
                     NULL,'USD', V_SERIAL, V_CDC,V_TRANSACTION_TIME_LOCAL,V_PRODUCT,V_START_DRAW_NUMBER,V_END_DRAW_NUMBER,
                     null,V_SERIAL_NUMBER);
             IF (V_SQLCODE != 0) THEN
-                            CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
-                        END IF;
-            IF(V_COUNT_COMMIT = 10000) THEN
-                SET V_COUNT_COMMIT = 1;
-                COMMIT ;
-            ELSE
-                SET V_COUNT_COMMIT = V_COUNT_COMMIT + 1;
-            end if;
-            SET V_INDEX=1;
-            SET V_SQLCODE = 0;
-            FETCH MIGRATED_TX_CURSOR
-                INTO V_TX_HEADER_ID,V_GLOBAL_TRANS_ID,V_CORRELATION_ID,V_UUID,V_PLAYER_ID,V_TRANSACTION_TIME_UTC,
-                    V_LOTTERY_TRANSACTION_TYPE,V_TRANSACTION_AMOUNT,V_SERIAL,V_CDC,V_TRANSACTION_TIME_LOCAL,
-                    V_PRODUCT,V_START_DRAW_NUMBER,V_END_DRAW_NUMBER,V_SUBSCRIPTION_ID,V_JOURNAL_ADDRESS,V_DATA;
-            IF (V_SQLCODE <> 0) THEN
-                CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE(
-                            'Finish reading the cursor.' || V_SQLCODE);
+                CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
             END IF;
+        end if;
+        IF(V_COUNT_COMMIT = 10000) THEN
+            SET V_COUNT_COMMIT = 1;
+            COMMIT ;
+        ELSE
+            SET V_COUNT_COMMIT = V_COUNT_COMMIT + 1;
+        end if;
+        SET V_INDEX=1;
+        SET V_SQLCODE = 0;
+        FETCH MIGRATED_TX_CURSOR
+            INTO V_TX_HEADER_ID,V_GLOBAL_TRANS_ID,V_CORRELATION_ID,V_UUID,V_PLAYER_ID,V_TRANSACTION_TIME_UTC,
+                V_LOTTERY_TRANSACTION_TYPE,V_TRANSACTION_AMOUNT,V_SERIAL,V_CDC,V_TRANSACTION_TIME_LOCAL,
+                V_PRODUCT,V_START_DRAW_NUMBER,V_END_DRAW_NUMBER,V_SUBSCRIPTION_ID,V_JOURNAL_ADDRESS,V_DATA;
+        IF (V_SQLCODE <> 0) THEN
+            CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE(
+                        'Finish reading the cursor.' || V_SQLCODE);
+        END IF;
+
+
         END WHILE;
     CLOSE MIGRATED_TX_CURSOR;
     CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('Close the "MIGRATED_TX_CURSOR" cursor.');

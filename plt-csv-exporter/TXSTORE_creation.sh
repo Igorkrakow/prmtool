@@ -63,6 +63,31 @@ db2 "$start_table
           UUID         VARCHAR(200))
       $end" | tee -a $logfile
 
+log_with_timestamp "CREATE TABLE MIGR_OPEN_TX_HEADER"
+db2 "$start_table
+      create table TXSTORE.MIGR_OPEN_TX_HEADER(
+          TX_HEADER_ID BIGINT not null
+                  constraint XPKMIGR_TX_HEADER
+                      primary key,
+              PLAYER_ID    BIGINT not null,
+              UUID         VARCHAR(200),
+              GLOBAL_TRANS_ID VARCHAR(50),
+              CDC INTEGER,
+              SERIAL BIGINT)
+      $end" | tee -a $logfile
+
+log_with_timestamp "CREATE INDEX MIGR_OPEN_TX_HEADER (UUID)"
+db2 " $start_index
+      create unique index TXSTORE.UQIDXMIGR_OPEN_TX_HEADER
+          on TXSTORE.MIGR_OPEN_TX_HEADER (UUID)
+      $end" | tee -a $logfile
+
+log_with_timestamp "CREATE INDEX MIGR_OPEN_TX_HEADER (PLAYER_ID)"
+db2 " $start_index
+      create index TXSTORE.XIDXMIGR_OPEN_TX_HEADERPLAYERID
+          on TXSTORE.MIGR_OPEN_TX_HEADER (PLAYER_ID)
+      $end" | tee -a $logfile
+
 log_with_timestamp "CREATE INDEX MIGR_TX_HEADER (UUID)"
 db2 " $start_index
       create unique index TXSTORE.UQIDXMIGR_TX_HEADER
