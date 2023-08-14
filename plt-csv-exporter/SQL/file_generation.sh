@@ -234,3 +234,115 @@ for f in $csvFileName'_unix-'*
               rm $f
       done
 rm $csvFileName'_HEADER.csv'
+echo "---------------------------"
+echo "TX-RESULT"
+echo "---------------------------"
+db2 connect to pddb
+log_with_timestamp "CREATE tx-result_ files"
+db2 export to tx-result_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
+            SELECT
+               'draw_id',
+               'product_id',
+               'prize_amount',
+               'ts_created',
+               'ts_modified',
+               'tx_draw_entry_id',
+               'validation_id',
+               'claim_id',
+               'prize_description',
+               'prize_type',
+               'winning_board_index',
+               'winning_division'
+            FROM sysibm.sysdummy1"
+db2 export to tx-result_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+            SELECT
+                DE.DRAWNUMBER as draw_id,
+                LTV.PRODUCT as product_id,
+                LTV.TRANSACTION_AMOUNT as prize_amount,
+                varchar_format(LTV.TRANSACTION_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3') as ts_created,
+                varchar_format(LTV.TRANSACTION_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3') as ts_modified,
+                DE.ID as tx_draw_entry_id,
+                LTV.LOTTERY_TX_HEADER_ID as validation_id,
+                NULL as claim_id,
+                NULL as prize_description,
+                'CASH' as prize_type,
+                NULL as winning_board_index,
+                mtt.winningDivision as winning_division
+            FROM
+                TXSTORE.MIGR_TX_HEADER VTH
+                    JOIN  TXSTORE.LOTTERY_TX_HEADER LTV
+                        ON LTV.LOTTERY_TX_HEADER_ID = VTH.TX_HEADER_ID
+                       and ltv.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
+                    JOIN TXSTORE.LOTTERY_TX_HEADER LTW
+                        ON LTV.GLOBAL_TRANS_ID = LTW.GLOBAL_TRANS_ID
+                               AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
+                    JOIN TXSTORE.TX_HEADER TH
+                        ON LTW.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
+                    JOIN TXSTORE.MIGRATED_TX_DRAW_ENTRY DE
+                        ON TH.UUID = DE.UUID
+                               AND DE.DRAWNUMBER = LTV.START_DRAW_NUMBER
+                    JOIN TXSTORE.MIGRATED_TX_TRANSACTION mtt on mtt.TX_TRANSACTION_ID=VTH.TX_HEADER_ID
+            UNION ALL
+            SELECT
+                DE.DRAWNUMBER as draw_id,
+                LTV.PRODUCT as product_id,
+                LTV.TRANSACTION_AMOUNT as prize_amount,
+                varchar_format(LTV.TRANSACTION_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3') as ts_created,
+                varchar_format(LTV.TRANSACTION_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3') as ts_modified,
+                DE.ID as tx_draw_entry_id,
+                LTV.LOTTERY_TX_HEADER_ID as validation_id,
+                NULL as claim_id,
+                NULL as prize_description,
+                'CASH' as prize_type,
+                NULL as winning_board_index,
+                mtt.winningDivision as winning_division
+            FROM
+                TXSTORE.MIGR_TX_HEADER VTH
+                    JOIN  TXSTORE.LOTTERY_TX_HEADER LTV
+                          ON LTV.LOTTERY_TX_HEADER_ID = VTH.TX_HEADER_ID
+                                AND VTH.TX_HEADER_ID not in (SELECT TX_HEADER_ID FROM
+                                                                 TXSTORE.MIGR_TX_HEADER VTH
+                                                                 JOIN  TXSTORE.LOTTERY_TX_HEADER LTV
+                                                                     ON LTV.LOTTERY_TX_HEADER_ID = VTH.TX_HEADER_ID
+                                                                    and ltv.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
+                                                                 JOIN TXSTORE.LOTTERY_TX_HEADER LTW
+                                                                     ON LTV.GLOBAL_TRANS_ID = LTW.GLOBAL_TRANS_ID
+                                                                            AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
+                                                                 )
+                              and ltv.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
+                    JOIN TXSTORE.LOTTERY_TX_HEADER LTW
+                         ON LTV.CDC = LTW.CDC
+                            AND LTV.SERIAL = LTW.SERIAL
+                            AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
+                    JOIN TXSTORE.TX_HEADER TH
+                         ON LTW.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
+                    JOIN TXSTORE.MIGRATED_TX_DRAW_ENTRY DE
+                         ON TH.UUID = DE.UUID
+                             AND DE.DRAWNUMBER = LTV.START_DRAW_NUMBER
+                    JOIN TXSTORE.MIGRATED_TX_TRANSACTION mtt on mtt.TX_TRANSACTION_ID=VTH.TX_HEADER_ID"
+###########################
+db2 terminate
+###########################
+###########################
+csvFileName="tx-result"
+###########################
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+for file in tx-result_unix-*
+do
+mv "$file" "$file.csv"
+done
+count=$(wc -l < $csvFileName'_TMP.csv')
+if (($count==0)); then
+  mv $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_001.csv'
+else
+  rm $csvFileName'_TMP.csv'
+fi
+for f in $csvFileName'_unix-'*
+      do
+              head -n 1 $csvFileName'_HEADER.csv' > $csvFileName'_HEADER_TMP.csv'
+              cat "$f" >>$csvFileName'_HEADER_TMP.csv'
+              mv -f $csvFileName'_HEADER_TMP.csv' "$f"
+              perl -p -e 's/\n/\r\n/' < $f > ${f//_unix/}
+              rm $f
+      done
+rm $csvFileName'_HEADER.csv'

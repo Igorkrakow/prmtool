@@ -50,7 +50,8 @@ db2 "$start_table CREATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION (
                             start_draw_number int NULL,
                             end_draw_number int NULL,
                             site_json_data varchar(100) NULL,
-                            serial_number varchar(30) NULL)
+                            serial_number varchar(30) NULL,
+                            winningDivision int NULL)
       $end" | tee -a $logfile
 
 ###   Create TMP table MIGR_TX_HEADER  ####
@@ -254,20 +255,20 @@ db2 "CREATE OR REPLACE VIEW TXSTORE.MIGRATED_TX_DRAW AS
 log_with_timestamp "CREATE SEQUENCE  MIGRATED_RESULTS_SEQ"
 db2 "CREATE or REPLACE SEQUENCE TXSTORE.MIGRATED_RESULTS_SEQ INCREMENT BY 1 START WITH 1" | tee -a $logfile
 
-###   CREATE TABLE MIGRATED_RESULTS   ###########
-log_with_timestamp "CREATE TABLE MIGRATED_RESULTS"
-index='IN "TS_TXST" INDEX IN "TS_TXST_IDX"'
-db2 " $start_table
-      CREATE TABLE TXSTORE.MIGRATED_RESULTS (
-        ID BIGINT NOT NULL constraint XPMIGRATED_RESULTS primary key,
-        LOTTERY_TX_HEADER_ID BIGINT NOT NULL,
-        DRAWNUMBER INTEGER NOT NULL,
-        PRODUCT SMALLINT NOT NULL,
-        TRANSACTION_AMOUNT BIGINT NOT NULL,
-        TRANSACTION_TIME_UTC TIMESTAMP NOT NULL,
-        TX_DRAW_ENTRY_ID BIGINT NOT NULL,
-        UUID VARCHAR(200),
-    DATA XML) $index $end" | tee -a $logfile
+####   CREATE TABLE MIGRATED_RESULTS   ###########
+#log_with_timestamp "CREATE TABLE MIGRATED_RESULTS"
+#index='IN "TS_TXST" INDEX IN "TS_TXST_IDX"'
+#db2 " $start_table
+#      CREATE TABLE TXSTORE.MIGRATED_RESULTS (
+#        ID BIGINT NOT NULL constraint XPMIGRATED_RESULTS primary key,
+#        LOTTERY_TX_HEADER_ID BIGINT NOT NULL,
+#        DRAWNUMBER INTEGER NOT NULL,
+#        PRODUCT SMALLINT NOT NULL,
+#        TRANSACTION_AMOUNT BIGINT NOT NULL,
+#        TRANSACTION_TIME_UTC TIMESTAMP NOT NULL,
+#        TX_DRAW_ENTRY_ID BIGINT NOT NULL,
+#        UUID VARCHAR(200),
+#    DATA XML) $index $end" | tee -a $logfile
 
 ###   CREATE TABLE BATCH_JOB_INSTANCE   ###########
 log_with_timestamp "CREATE TABLE BATCH_JOB_INSTANCE"

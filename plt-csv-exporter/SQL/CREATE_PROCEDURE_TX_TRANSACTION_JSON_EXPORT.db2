@@ -272,11 +272,11 @@ BEGIN
                                                          UUID, PLAYER_ID,TRANSACTION_TIME, TRANSACTION_TYPE, CHANNEL_ID, SYSTEM_ID, TRANSACTION_AMOUNT,
                                                          TRANSACTION_DISCOUNT_AMOUNT, CURRENCY, SERIAL, CDC, GAME_ENGINE_TRANSACTION_TIME,
                                                          PRODUCT_ID, START_DRAW_NUMBER, END_DRAW_NUMBER, SITE_JSON_DATA,
-                                                         SERIAL_NUMBER)
+                                                         SERIAL_NUMBER,winningDivision)
             values (V_TX_HEADER_ID,V_GLOBAL_TRANS_ID,V_CORRELATION_ID, V_UUID, V_PLAYER_ID,
                     V_TRANSACTION_TIME_UTC, V_LOTTERY_TRANSACTION_TYPE,V_CHANNEL_ID,V_SYSTEM_ID,V_TRANSACTION_AMOUNT,
                     NULL,'USD', V_SERIAL, V_CDC,V_TRANSACTION_TIME_LOCAL,V_PRODUCT,V_START_DRAW_NUMBER,V_END_DRAW_NUMBER,
-                    null,V_SERIAL_NUMBER);
+                    null,V_SERIAL_NUMBER,V_DIVISION);
             IF (V_SQLCODE != 0) THEN
                 CALL SYSIBMADM.DBMS_OUTPUT.PUT_LINE('ERROR WHILE INSERT #'||V_SQLCODE);
             END IF;
