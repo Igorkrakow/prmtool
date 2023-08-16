@@ -54,6 +54,16 @@ db2 "$start_table CREATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION (
                             winningDivision int NULL)
       $end" | tee -a $logfile
 
+log_with_timestamp "CREATE INDEX MIGRATED_TX_TRANSACTION (TX_TRANSACTION_ID)"
+db2 " $start_index
+      CREATE INDEX TXSTORE.MIGRATED_TX_TRANSACTION_TX_TRANSACTION_ID
+          on TXSTORE.MIGRATED_TX_TRANSACTION (TX_TRANSACTION_ID)
+      $end" | tee -a $logfile
+
+###   REORG INDEXES on LOTTERY_TX_HEADER ###########
+log_with_timestamp "REORG INDEXES on MIGRATED_TX_TRANSACTIONR"
+db2 "REORG INDEXES ALL FOR TABLE TXSTORE.MIGRATED_TX_TRANSACTION" | tee -a $logfile
+
 ###   Create TMP table MIGR_TX_HEADER  ####
 
 log_with_timestamp "CREATE TABLE MIGR_TX_HEADER"
@@ -256,19 +266,19 @@ log_with_timestamp "CREATE SEQUENCE  MIGRATED_RESULTS_SEQ"
 db2 "CREATE or REPLACE SEQUENCE TXSTORE.MIGRATED_RESULTS_SEQ INCREMENT BY 1 START WITH 1" | tee -a $logfile
 
 ####   CREATE TABLE MIGRATED_RESULTS   ###########
-#log_with_timestamp "CREATE TABLE MIGRATED_RESULTS"
-#index='IN "TS_TXST" INDEX IN "TS_TXST_IDX"'
-#db2 " $start_table
-#      CREATE TABLE TXSTORE.MIGRATED_RESULTS (
-#        ID BIGINT NOT NULL constraint XPMIGRATED_RESULTS primary key,
-#        LOTTERY_TX_HEADER_ID BIGINT NOT NULL,
-#        DRAWNUMBER INTEGER NOT NULL,
-#        PRODUCT SMALLINT NOT NULL,
-#        TRANSACTION_AMOUNT BIGINT NOT NULL,
-#        TRANSACTION_TIME_UTC TIMESTAMP NOT NULL,
-#        TX_DRAW_ENTRY_ID BIGINT NOT NULL,
-#        UUID VARCHAR(200),
-#    DATA XML) $index $end" | tee -a $logfile
+log_with_timestamp "CREATE TABLE MIGRATED_RESULTS"
+index='IN "TS_TXST" INDEX IN "TS_TXST_IDX"'
+db2 " $start_table
+      CREATE TABLE TXSTORE.MIGRATED_RESULTS (
+        ID BIGINT NOT NULL constraint XPMIGRATED_RESULTS primary key,
+        LOTTERY_TX_HEADER_ID BIGINT NOT NULL,
+        DRAWNUMBER INTEGER NOT NULL,
+        PRODUCT SMALLINT NOT NULL,
+        TRANSACTION_AMOUNT BIGINT NOT NULL,
+        TRANSACTION_TIME_UTC TIMESTAMP NOT NULL,
+        TX_DRAW_ENTRY_ID BIGINT NOT NULL,
+        UUID VARCHAR(200),
+        WINNINGDIVISION INTEGER) $index $end" | tee -a $logfile
 
 ###   CREATE TABLE BATCH_JOB_INSTANCE   ###########
 log_with_timestamp "CREATE TABLE BATCH_JOB_INSTANCE"
@@ -426,7 +436,7 @@ echo "------------ END creation ------------" | tee -a $logfile
 ###   CREATE TABLE MIGRATED_TX_JSON   ###########
 log_with_timestamp "CREATE TABLE MIGRATED_TX_JSON"
 db2 " $start_table
-     create table GIS.BATCH_STEP_EXECUTION_CONTEXT
+     create table TXSTORE.MIGRATED_TX_JSON
       (
           UUID VARCHAR(200),
           JSON VARCHAR(20000)
@@ -434,7 +444,7 @@ db2 " $start_table
 
 ###   CREATE PROCEDURE to handle primarry/secondary board-data ###########
 log_with_timestamp "CREATE PROCEDURE to handle primarry/secondary board-data"
-db2 -td@ -vf SQL/CREATE_OR_REPLACE_PROCEDURE_TXSTORE.HANDLE_PART.db2.db2 | tee -a $logfile
+db2 -td@ -vf SQL/CREATE_OR_REPLACE_PROCEDURE_TXSTORE.HANDLE_PART.db2 | tee -a $logfile
 
 ###   CREATE PROCEDURE RemoveXmlns ###########
 log_with_timestamp "CREATE PROCEDURE RemoveXmlns"
