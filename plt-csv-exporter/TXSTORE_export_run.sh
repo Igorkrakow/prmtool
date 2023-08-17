@@ -114,6 +114,7 @@ elif [ "$tool" = "sql" ]; then
                            and ltv.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
                         JOIN TXSTORE.LOTTERY_TX_HEADER LTW
                             ON LTV.GLOBAL_TRANS_ID = LTW.GLOBAL_TRANS_ID
+                            AND LTV.SERIAL = LTW.SERIAL
                                    AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
                         JOIN TXSTORE.TX_HEADER TH
                             ON LTW.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
