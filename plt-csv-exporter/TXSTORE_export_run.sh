@@ -143,6 +143,7 @@ elif [ "$tool" = "sql" ]; then
                    AND DE.DRAWNUMBER = LTV.START_DRAW_NUMBER
           JOIN TXSTORE.MIGRATED_TX_TRANSACTION mtt on mtt.TX_TRANSACTION_ID=VTH.TX_HEADER_ID"| tee -a $logfile
   sh SQL/file_generation.sh "$endDate"
+  sh SQL/kpi.sh "$project" "$countMAX"
 fi
 #####################
 
