@@ -30,18 +30,54 @@ db2 export to kpi_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
     FROM sysibm.sysdummy1"
 
 echo "---------------------------"
+echo "TRANSACTION KPIS"
+echo "---------------------------"
+
+db2 export to kpis_transactions_1all_.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'TRANSACTION. all transactions on db' as name,
+        count(*) from TXSTORE.MIGR_TX_HEADER"
+
+db2 export to kpis_transactions_2all_by_types.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'TRANSACTION. all transactions. '||LOTTERY_TRANSACTION_TYPE,
+        count(*) FROM TXSTORE.MIGR_TX_HEADER MTH
+        JOIN TXSTORE.LOTTERY_TX_HEADER LTH ON MTH.TX_HEADER_ID = LTH.LOTTERY_TX_HEADER_ID
+        GROUP BY LOTTERY_TRANSACTION_TYPE"
+db2 export to kpis_transactions_3closed.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'TRANSACTION. closed transactions (migrated)' as name,
+        count(*) from TXSTORE.MIGRATED_TX_TRANSACTION"
+db2 export to kpis_transactions_4closed_by_types.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'TRANSACTION. closed transactions. '||TRANSACTION_TYPE,
+        count(*)
+        from TXSTORE.MIGRATED_TX_TRANSACTION
+             group by TRANSACTION_TYPE"
+db2 export to kpis_transactions_5open.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'TRANSACTION. open transactions (not migrated yet)' as name,
+        count(*) from TXSTORE.MIGR_OPEN_TX_HEADER"
+db2 export to kpis_transactions_6open_by_types.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'TRANSACTION. open transactions. '||LOTTERY_TRANSACTION_TYPE,count(*)
+        FROM TXSTORE.MIGR_OPEN_TX_HEADER MTH
+        JOIN TXSTORE.LOTTERY_TX_HEADER LTH ON MTH.TX_HEADER_ID = LTH.LOTTERY_TX_HEADER_ID
+        GROUP BY LOTTERY_TRANSACTION_TYPE"
+
+echo "---------------------------"
 echo "RESULTS KPIS"
 echo "---------------------------"
-db2 export to kpis_all_validations.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to kpis_results_1all_validations.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.All validations' as name,
         count(*) from TXSTORE.MIGRATED_TX_TRANSACTION MTX
                        WHERE MTX.TRANSACTION_TYPE = 'VALIDATION'"
-db2 export to kpis_migrated_results.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to kpis_results_2migrated.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.Migrated results' as name,
          count(*) from (select distinct (LOTTERY_TX_HEADER_ID) from TXSTORE.MIGRATED_RESULTS)"
-db2 export to kpis_Wagers_without_draw_id.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to kpis_results_3Wagers_without_draw_id.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.Validations for dirty WAGERS(without start-end draw id)' as name,
         count(DISTINCT TX_TRANSACTION_ID) FROM
@@ -57,7 +93,7 @@ db2 export to kpis_Wagers_without_draw_id.csv OF DEL MODIFIED BY NOCHARDEL  "
                                                         and MTV.TRANSACTION_TYPE='VALIDATION'
              where t.TRANSACTION_TYPE = 'WAGER' and t.START_DRAW_NUMBER is null
              )"
-db2 export to kpis_VALIDATIONs_without_WAGERs.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to kpis_results_4VALIDATIONs_without_WAGERs.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.VALIDATIONs without WAGERs' as name,
         count(*)
@@ -80,7 +116,7 @@ db2 export to kpis_VALIDATIONs_without_WAGERs.csv OF DEL MODIFIED BY NOCHARDEL  
                                   AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
                     WHERE tv.TRANSACTION_TYPE='VALIDATION')"
 
-db2 export to kpis_wagers_before_first_day_of_run.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to kpis_results_5wagers_before_first_day_of_run.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.Wagers before first day of run' as name,
         SUM(Count) AS TotalCount
@@ -133,9 +169,51 @@ db2 export to kpis_wagers_before_first_day_of_run.csv OF DEL MODIFIED BY NOCHARD
              )
          ) AS SubQuery"
 
+echo "---------------------------"
+echo "DRAW ENTRY"
+echo "---------------------------"
+
+db2 export to kpis_draw_1entry_from_all_runs.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'DRAW ENTRY. Draw entry from all runs' as name,
+        count(*) from TXSTORE.MIGRATED_TX_DRAW_ENTRY"
+
+db2 export to kpis_draw_2entry_should_be.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'DRAW ENTRY. Draw entry should be' as name,
+        sum(L.END_DRAW_NUMBER - L.START_DRAW_NUMBER +1)
+        FROM
+            TXSTORE.LOTTERY_TX_HEADER L
+                INNER JOIN TXSTORE.MIGRATED_TX_TRANSACTION H
+                           ON L.LOTTERY_TX_HEADER_ID = H.TX_TRANSACTION_ID
+        WHERE L.PRODUCT NOT IN (30,35) AND L.LOTTERY_TRANSACTION_TYPE = 'WAGER'"
+
+db2 export to kpis_draw_3entry_migrated.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'DRAW ENTRY. Draw entry migrated' as name,
+        count(*) FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY as DE
+        join TXSTORE.MIGRATED_TX_TRANSACTION as t on DE.UUID=t.UUID"
+
+db2 export to kpis_draw_4entry_by_types.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'DRAW ENTRY. draw entry by types. '||DE.WIN_STATUS ,
+        count(*) FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY as DE
+        join TXSTORE.MIGRATED_TX_TRANSACTION as t on DE.UUID=t.UUID
+        group by DE.WIN_STATUS"
+
+echo "---------------------------"
+echo "DRAW"
+echo "---------------------------"
+
+db2 export to kpis_draw_4entry_wining_not_winung.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'DRAWS. all draws' ,
+        count(*)
+        FROM GIS.DGGAMEEVENT E"
+
 ###########################
 db2 terminate
 ###########################
-cat "kpi_HEADER.csv" kpis_*.csv > "kpi.csv"
+cat "kpi_HEADER.csv" kpis_transactions_*.csv kpis_results_*.csv kpis_draw_*.csv> "kpi.csv"
 rm -f "kpi_HEADER.csv"
 rm -f kpis_*.csv

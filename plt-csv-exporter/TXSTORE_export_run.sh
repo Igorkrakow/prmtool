@@ -62,7 +62,6 @@ log_with_timestamp "max TX_HEADER_ID = $countMAX"
 
 log_with_timestamp "TRUNCATE TMP tables "
 
-db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGRATED_RESULTS IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGR_TX_HEADER IMMEDIATE"| tee -a $logfile
 db2 "TRUNCATE TABLE TXSTORE.MIGRATED_TX_JSON IMMEDIATE"| tee -a $logfile
@@ -83,6 +82,9 @@ db2 "INSERT INTO TXSTORE.MIGR_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID)
         ON T.TX_HEADER_ID = L.LOTTERY_TX_HEADER_ID
       WHERE $project_condition T.TX_HEADER_ID BETWEEN $countMIN AND $countMAX"| tee -a $logfile
 #####################
+log_with_timestamp "Starting Create Json and tx-transaction files"
+db2 "call TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT => '$project');"| tee -a $logfile
+#####################
 log_with_timestamp "Copy data to MIGRATED_TX_DRAW_ENTRY from DGGAMEEVENT "
 echo "Count of transaction for MIGRATED_TX_DRAW_ENTRY: "
 db2 "SELECT sum(L.END_DRAW_NUMBER - L.START_DRAW_NUMBER +1)
@@ -90,22 +92,11 @@ db2 "SELECT sum(L.END_DRAW_NUMBER - L.START_DRAW_NUMBER +1)
          TXSTORE.LOTTERY_TX_HEADER L
              INNER JOIN TXSTORE.MIGR_TX_HEADER H
                         ON L.LOTTERY_TX_HEADER_ID = H.TX_HEADER_ID
-     WHERE L.PRODUCT NOT IN (30,35) AND L.LOTTERY_TRANSACTION_TYPE = 'WAGER'" | tee -a $logfile
+     WHERE $project_condition L.LOTTERY_TRANSACTION_TYPE = 'WAGER'" | tee -a $logfile
 db2 "call TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()"| tee -a $logfile
-#####################
-if [ "$tool" = "java" ]; then
-  log_with_timestamp "Starting -JAR csv-exporter for txExport "
-  if [ "$project" = "KY" ]; then
-    /tmp/java8/jre1.8.0_202/bin/java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
-  elif [ "$project" = "RI" ]; then
-    java -jar ${script_full_path}/csv-exporter.jar txExport 1000 ${script_full_path} 001 > ${script_full_path}.log &
-  fi
-elif [ "$tool" = "sql" ]; then
-  log_with_timestamp "Starting Create Json and tx-transaction files"
-  db2 "call TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT => '$project');"| tee -a $logfile
-  ####################
-  log_with_timestamp "Copy data to MIGRATED_RESULTS from LOTTERY_TX_HEADER BY GLOBAL"
-  db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,PRODUCT,TRANSACTION_AMOUNT,TRANSACTION_TIME_UTC,TX_DRAW_ENTRY_ID,UUID,WINNINGDIVISION)
+####################
+log_with_timestamp "Copy data to MIGRATED_RESULTS from LOTTERY_TX_HEADER BY GLOBAL"
+db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,PRODUCT,TRANSACTION_AMOUNT,TRANSACTION_TIME_UTC,TX_DRAW_ENTRY_ID,UUID,WINNINGDIVISION)
   	SELECT TXSTORE.MIGRATED_RESULTS_SEQ.NEXTVAL,LTV.LOTTERY_TX_HEADER_ID,DE.DRAWNUMBER,LTV.PRODUCT,LTV.TRANSACTION_AMOUNT,LTV.TRANSACTION_TIME_UTC,DE.ID,VTH.UUID,mtt.WINNINGDIVISION
     FROM
                     TXSTORE.MIGR_TX_HEADER VTH
@@ -123,8 +114,8 @@ elif [ "$tool" = "sql" ]; then
                                    AND DE.DRAWNUMBER = LTV.START_DRAW_NUMBER
                         JOIN TXSTORE.MIGRATED_TX_TRANSACTION mtt on mtt.TX_TRANSACTION_ID=VTH.TX_HEADER_ID"| tee -a $logfile
 
-  log_with_timestamp "Copy data to MIGRATED_RESULTS from LOTTERY_TX_HEADER BY CDC"
-  db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,PRODUCT,TRANSACTION_AMOUNT,TRANSACTION_TIME_UTC,TX_DRAW_ENTRY_ID,UUID,WINNINGDIVISION)
+log_with_timestamp "Copy data to MIGRATED_RESULTS from LOTTERY_TX_HEADER BY CDC"
+db2	"INSERT INTO TXSTORE.MIGRATED_RESULTS( ID, LOTTERY_TX_HEADER_ID,DRAWNUMBER,PRODUCT,TRANSACTION_AMOUNT,TRANSACTION_TIME_UTC,TX_DRAW_ENTRY_ID,UUID,WINNINGDIVISION)
   	SELECT TXSTORE.MIGRATED_RESULTS_SEQ.NEXTVAL,LTV.LOTTERY_TX_HEADER_ID,DE.DRAWNUMBER,LTV.PRODUCT,LTV.TRANSACTION_AMOUNT,LTV.TRANSACTION_TIME_UTC,DE.ID,VTH.UUID,mtt.WINNINGDIVISION
     FROM
   TXSTORE.MIGR_TX_HEADER VTH
@@ -143,9 +134,12 @@ elif [ "$tool" = "sql" ]; then
                ON TH.UUID = DE.UUID
                    AND DE.DRAWNUMBER = LTV.START_DRAW_NUMBER
           JOIN TXSTORE.MIGRATED_TX_TRANSACTION mtt on mtt.TX_TRANSACTION_ID=VTH.TX_HEADER_ID"| tee -a $logfile
-  sh SQL/file_generation.sh "$endDate"
-  sh SQL/kpi.sh "$project" "$countMAX"
-fi
+
+db2" UPDATE TXSTORE.MIGRATED_TX_DRAW_ENTRY SET WIN_STATUS = 'WINNING' where ID in(
+    select TX_DRAW_ENTRY_ID from TXSTORE.MIGRATED_RESULTS)"
+
+sh SQL/file_generation.sh "$endDate"
+sh SQL/kpi.sh "$project" "$countMAX"
 #####################
 
 echo "" | tee -a $logfile

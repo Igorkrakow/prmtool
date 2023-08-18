@@ -200,14 +200,14 @@ db2 export to tx-draw-entry_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
                'json_data'
             FROM sysibm.sysdummy1"
 db2 export to tx-draw-entry_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
-            SELECT
-                DE.id as tx_draw_entry_id,
-                DE.uuid as tx_transaction_uuid,
-                DE.drawnumber as draw_id,
-                DE.product as product_id,
-                DE.win_status as winning_status,
-                null as json_data
-            FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY as DE"
+            SELECT DE.id as tx_draw_entry_id,
+                            DE.uuid as tx_transaction_uuid,
+                            DE.drawnumber as draw_id,
+                            DE.product as product_id,
+                            DE.win_status as winning_status,
+                            null as json_data
+            FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY as DE
+            join TXSTORE.MIGRATED_TX_TRANSACTION as t on DE.UUID=t.UUID"
 ###########################
 db2 terminate
 ###########################

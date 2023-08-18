@@ -188,7 +188,6 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
          DECLARE v_PRODUCT INT;
          DECLARE v_UUID VARCHAR(200);
          DECLARE v_GLOBAL_TRANS_ID VARCHAR(50);
-         DECLARE V_COUNT_VALIDATION INT;
          DECLARE V_COUNT_COMMIT INTEGER;
          -- Declare cursor
          DECLARE LOTTERY_TX_HEADER_FOR_ECH_WAGER CURSOR WITH HOLD FOR
@@ -201,8 +200,8 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
                  D.GLOBAL_TRANS_ID
              FROM
                  TXSTORE.LOTTERY_TX_HEADER D
-                 INNER JOIN TXSTORE.MIGR_TX_HEADER H
-                     ON D.LOTTERY_TX_HEADER_ID = H.TX_HEADER_ID
+                 INNER JOIN TXSTORE.MIGRATED_TX_TRANSACTION H
+                     ON D.LOTTERY_TX_HEADER_ID = H.TX_TRANSACTION_ID
              WHERE $project_condition D.LOTTERY_TRANSACTION_TYPE = 'WAGER';
          DECLARE CONTINUE HANDLER FOR SQLEXCEPTION, NOT FOUND, SQLWARNING
              SET V_SQLCODE = SQLCODE;
@@ -216,20 +215,13 @@ db2 "CREATE OR REPLACE PROCEDURE TXSTORE.INSERT_INTO_MIGRATED_TX_DRAW_ENTRY()
          WHILE (V_SQLCODE = 0) DO
                  SET v_DRAW_NUMBER = v_START_DRAW_NUMBER;
                  WHILE (v_DRAW_NUMBER <= v_END_DRAW_NUMBER) DO
-                         SELECT  COUNT(*)
-                         INTO    V_COUNT_VALIDATION
-                         FROM    TXSTORE.LOTTERY_TX_HEADER
-                         WHERE   LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
-                                 and GLOBAL_TRANS_ID=v_GLOBAL_TRANS_ID
-                                 and START_DRAW_NUMBER=v_DRAW_NUMBER;
-
                          INSERT INTO TXSTORE.MIGRATED_TX_DRAW_ENTRY (ID,UUID,DRAWNUMBER,PRODUCT,WIN_STATUS)
                          VALUES (
                                     NEXT VALUE FOR TXSTORE.MIGRATED_TX_DRAW_ENTRY_SEQ,
                                     v_UUID,
                                     v_DRAW_NUMBER,
                                     v_PRODUCT,
-                                    CASE WHEN V_COUNT_VALIDATION >= 1 THEN 'WINNING' ELSE 'NON_WINNING' END
+                                    'NON_WINNING'
                                 );
                          IF(V_COUNT_COMMIT = 10000) THEN
                                          SET V_COUNT_COMMIT = 1;
