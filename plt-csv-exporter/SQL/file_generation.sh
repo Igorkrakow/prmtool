@@ -5,6 +5,8 @@
 # for go-life run: sh file_generation.sh.sh "2023-01-01 00:00:00.000000" ""
 # !!! Use current date to export !!!
 #set variable
+
+logfile="scriptlog.log"
 log_with_timestamp() {
   local current_timestamp=$(date +"%Y-%m-%d %H:%M:%S")
   echo "" | tee -a $logfile

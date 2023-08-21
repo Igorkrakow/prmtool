@@ -253,5 +253,6 @@ for f in $csvFileName'_unix-'*
               rm $f
       done
 rm $csvFileName'_HEADER.csv'
+sh SQL/kpi.sh
 echo "" | tee -a $logfile
 echo "------------ END export ------------" | tee -a $logfile

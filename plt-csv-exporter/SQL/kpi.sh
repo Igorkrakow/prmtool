@@ -5,6 +5,8 @@
 # for go-life run: sh file_generation.sh.sh "2023-01-01 00:00:00.000000" ""
 # !!! Use current date to export !!!
 #set variable
+logfile="scriptlog.log"
+
 min_id_from_first_run=100000
 project=$1
 max_id_from_current_run=$2
