@@ -211,9 +211,36 @@ db2 export to kpis_draw_4entry_wining_not_winung.csv OF DEL MODIFIED BY NOCHARDE
         count(*)
         FROM GIS.DGGAMEEVENT E"
 
+echo "---------------------------"
+echo "FAVORITES KPIS"
+echo "---------------------------"
+
+db2 export to kpis_favorites_1_group_.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'FAVORITES. all groups' as name,
+         count(*)
+        FROM GIS.DGFAVORITEWAGERGROUP"
+
+db2 export to kpis_favorites_2_wager_.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'FAVORITES. all wagers' as name,
+         count(*)
+        FROM GIS.DGFAVORITEWAGER"
+
+db2 export to kpis_favorites_3_stack_.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'FAVORITES. all stacks' as name,
+         count(*)
+        FROM GIS.DGFAVORITEBOARDSTACK"
+
+db2 export to kpis_favorites_4_boards_.csv OF DEL MODIFIED BY NOCHARDEL  "
+    SELECT
+        'FAVORITES. all boards' as name,
+         count(*)
+        FROM GIS.GIS.DGFAVORITEBOARD"
 ###########################
 db2 terminate
 ###########################
-cat "kpi_HEADER.csv" kpis_transactions_*.csv kpis_results_*.csv kpis_draw_*.csv> "kpi.csv"
+cat "kpi_HEADER.csv" kpis_transactions_*.csv kpis_results_*.csv kpis_draw_*.csv kpis_favorites_*> "kpi.csv"
 rm -f "kpi_HEADER.csv"
 rm -f kpis_*.csv
