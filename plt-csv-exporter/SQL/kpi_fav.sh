@@ -45,7 +45,7 @@ db2 export to kpis_favorites_4_boards_.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'FAVORITES. all boards' as name,
          count(*)
-        FROM GIS.GIS.DGFAVORITEBOARD"
+        FROM GIS.DGFAVORITEBOARD"
 ###########################
 db2 terminate
 ###########################
