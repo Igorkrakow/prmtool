@@ -13,10 +13,10 @@ BEGIN
             SET V_POS = LOCATE(' ', V_PART);
             SET V_ITEM_VALUE = TRIM(BOTH '0' FROM SUBSTR(V_PART, 1, COALESCE(NULLIF(V_POS, 0), LENGTH(V_PART))));
             SET V_PART = SUBSTR(V_PART, V_POS + 1);
-            SET V_ITEMS_RESULT = V_ITEMS_RESULT || '{"itemValue":"' || V_ITEM_VALUE || '","itemIndex":"' || V_COUNTER || '"},';
+            SET V_ITEMS_RESULT = V_ITEMS_RESULT || '{""itemValue"":""' || V_ITEM_VALUE || '"",""itemIndex"":""' || V_COUNTER || '""},';
             SET V_COUNTER = V_COUNTER + 1;
         END WHILE;
     SET V_ITEMS_RESULT = SUBSTR(V_ITEMS_RESULT, 1, LENGTH(V_ITEMS_RESULT) - 1); -- Remove trailing comma
-    SET V_RESULT = '{"quickpickCount":' || V_COUNTER || ',"selectionTypeName":"' || V_NAME || '","drawGameBoardItems":[' || V_ITEMS_RESULT || ']}';
+SET V_RESULT = '{""quickpickCount"":' || V_COUNTER || ',""selectionTypeName"":""' || V_NAME || '"",""drawGameBoardItems"":[' || V_ITEMS_RESULT || ']}';
 END
 @

@@ -13,7 +13,7 @@ log_with_timestamp() {
   echo "$current_timestamp - $1" | tee -a $logfile
 }
 num_rows=100000
-fileNameEndDate=$(date -d "$1" +%Y%m%d)
+fileNameEndDate=$(date -d "$1" +%Y%m%d-%H%M%S)
 db2 connect to pddb
 log_with_timestamp "CREATE json-transaction_ files"
 #####################
@@ -36,7 +36,7 @@ db2 terminate
 ###########################
 csvFileName="json-transaction"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in json-transaction_unix-*
 do
 mv "$file" "$file.csv"
@@ -92,7 +92,7 @@ db2 export to tx-transaction_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                 CORRELATION_ID,
                 UUID,
                 PLAYER_ID,
-                TRANSACTION_TIME,
+                varchar_format(TRANSACTION_TIME,'YYYY-MM-DD HH24:MI:SS.FF3') as TRANSACTION_TIME,
                 TRANSACTION_TYPE,
                 CHANNEL_ID,
                 SYSTEM_ID,
@@ -101,7 +101,7 @@ db2 export to tx-transaction_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                 CURRENCY,
                 SERIAL,
                 CDC,
-                GAME_ENGINE_TRANSACTION_TIME,
+                varchar_format(GAME_ENGINE_TRANSACTION_TIME,'YYYY-MM-DD HH24:MI:SS.FF3') as GAME_ENGINE_TRANSACTION_TIME,
                 PRODUCT_ID,
                 START_DRAW_NUMBER,
                 END_DRAW_NUMBER,
@@ -114,7 +114,7 @@ db2 terminate
 ###########################
 csvFileName="tx-transaction"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in tx-transaction_unix-*
 do
 mv "$file" "$file.csv"
@@ -155,8 +155,8 @@ db2 export to tx-draws_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                 null as draw_name,
                 varchar_format(E.DRAWDATE,'YYYY-MM-DD HH24:MI:SS.FF3') as draw_time,
                 case when g.NAME is not null then
-                    'ACTIVE'
-                else 'CLOSED' end as draw_status
+                    'OPEN'
+                else 'CLOSE' end as draw_status
             FROM GIS.DGGAMEEVENT E
             left join GIS.DGGAME G ON G.IDDGGAME=E.IDDGGAME
             AND G.IDDGGAMEEVENT_CURRENT=E.IDDGGAMEEVENT"
@@ -166,7 +166,7 @@ db2 terminate
 ###########################
 csvFileName="tx-draws"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in tx-draws_unix-*
 do
 mv "$file" "$file.csv"
@@ -216,7 +216,7 @@ db2 terminate
 ###########################
 csvFileName="tx-draw-entry"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in tx-draw-entry_unix-*
 do
 mv "$file" "$file.csv"
@@ -278,7 +278,7 @@ db2 terminate
 ###########################
 csvFileName="tx-result"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in tx-result_unix-*
 do
 mv "$file" "$file.csv"

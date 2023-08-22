@@ -216,6 +216,6 @@ db2 export to kpis_draw_4entry_wining_not_winung.csv OF DEL MODIFIED BY NOCHARDE
 ###########################
 db2 terminate
 ###########################
-cat "kpi_HEADER.csv" kpis_transactions_*.csv kpis_results_*.csv kpis_draw_*.csv kpis_favorites_*> "kpi.csv"
+cat "kpi_HEADER.csv" kpis_transactions_*.csv kpis_results_*.csv kpis_draw_*.csv> "kpi.csv"
 rm -f "kpi_HEADER.csv"
 rm -f kpis_*.csv

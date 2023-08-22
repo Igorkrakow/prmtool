@@ -146,14 +146,14 @@ BEGIN
                 end if;
                 IF V_PRODUCT IS NULL THEN SET V_PRODUCT = 0; end if;
                 IF V_JOURNAL_ADDRESS IS NULL THEN SET V_JOURNAL_ADDRESS = 0; end if;
-                SET V_JSON ='{"drawGameWagerDetails":{"trxLoyaltyPoints":0,' ||
-                            '"productNumber": ' || V_PRODUCT || ',' ||
-                            '"journalAddress": "' || V_JOURNAL_ADDRESS || '",' ||
-                            '"drawIds": [' || V_DRAW_IDS || '],' ||
-                            '"cardId":"0",'||
-                            '"jurisdiction":'||V_JURISDICTION||','||
-                            '"multiplier":'||V_MULTIPLIER||'},'||
-                            '"drawGameBoards":{"drawGameBoardDetails":[';
+                SET V_JSON ='"{""drawGameWagerDetails"":{""trxLoyaltyPoints"":0,' ||
+                                '""productNumber"": ' || V_PRODUCT || ',' ||
+                                '""journalAddress"": ""' || V_JOURNAL_ADDRESS || '"",' ||
+                                '""drawIds"": [' || V_DRAW_IDS || '],' ||
+                                '""cardId"":""0"",'||
+                                '""jurisdiction"":'||V_JURISDICTION||','||
+                                '""multiplier"":'||V_MULTIPLIER||'},'||
+                                '""drawGameBoards"":{""drawGameBoardDetails"":[';
                 WHILE V_INDEX <= XMLCAST(XMLQUERY('count($V_DATA/balanceTransaction/details/wager-detail/board-data)' PASSING V_DATA AS "V_DATA") AS INT) DO
                         SET V_BOARD_DATA = XMLQUERY('$V_DATA/balanceTransaction/details/wager-detail/board-data[position() = $V_INDEX]' PASSING V_DATA AS "V_DATA", V_INDEX AS "V_INDEX");
                         SET V_VALUE = XMLCAST(XMLQUERY('fn:string($V_BOARD_DATA)' PASSING V_BOARD_DATA AS "V_BOARD_DATA") AS VARCHAR(100));
@@ -161,11 +161,11 @@ BEGIN
                             SET V_QP = XMLCAST(XMLQUERY('fn:string($V_BOARD_DATA/@qp)' PASSING V_BOARD_DATA AS "V_BOARD_DATA") AS VARCHAR(10));
                             SET V_BOARD_INDEX = CAST(V_INDEX AS INT) - 1;
                             IF V_INDEX > 1 THEN
-                                SET V_JSON = V_JSON || ',{"boardIndex":' || V_BOARD_INDEX || ',';
+                                SET V_JSON = V_JSON || ',{""boardIndex"":' || V_BOARD_INDEX || ',';
                             ELSE
-                                SET V_JSON = V_JSON || '{"boardIndex":' || V_BOARD_INDEX || ',';
+                                SET V_JSON = V_JSON || '{""boardIndex"":' || V_BOARD_INDEX || ',';
                             END IF;
-                            SET V_JSON = V_JSON || '"boardPrice":0,' || '"stake":0,' || '"betTypeId":"0",' || '"drawGameBoardSelections":[';
+                            SET V_JSON = V_JSON || '""boardPrice"":0,' || '""stake"":0,' || '""betTypeId"":""0"",' || '""drawGameBoardSelections"":[';
                             IF LOCATE('-', V_VALUE) > 0 THEN
                                 SET V_PRIMARY = SUBSTR(V_VALUE, 1, LOCATE(' - ', V_VALUE) - 1);
                                 SET V_SECONDARY = SUBSTR(V_VALUE, LOCATE(' - ', V_VALUE) + 3);
@@ -187,15 +187,12 @@ BEGIN
                 IF V_PROJECT='KY' THEN
                     IF V_CDC IS NULL THEN SET V_CDC = 0; end if;
                     SET V_JSON = V_JSON||']}, ' ||
-                                 '"terminalSessionDetailsDTO":{"sessionId":0,"terminalId":0,"retailerId":0,"cdc":'||V_CDC||'},'||
-                                 '"playerPreferences":{"autopayWinnings":false,"digitalTicketOnly":false}}';
+                        '""terminalSessionDetailsDTO"":{""sessionId"":0,""terminalId"":0,""retailerId"":0,""cdc"":'||V_CDC||'},'||
+                        '""playerPreferences"":{""autopayWinnings"":false,""digitalTicketOnly"":false}}"';
                 elseif V_PROJECT='RI' THEN
                     SET V_JSON = V_JSON||']}, ' ||
-                                 '"playerPreferences":{"autopayWinnings":false,"digitalTicketOnly":false}}';
+                        '""playerPreferences"":{""autopayWinnings"":false,""digitalTicketOnly"":false}}"';
                 end if;
-                SET V_JSON = V_JSON||']}, ' ||
-                             '"terminalSessionDetailsDTO":{"sessionId":0,"terminalId":0,"retailerId":0,"cdc":'||V_CDC||'},'||
-                             '"playerPreferences":{"autopayWinnings":false,"digitalTicketOnly":false}}';
                 ------------  VALIDATION  ------------
             ELSEIF V_LOTTERY_TRANSACTION_TYPE='VALIDATION' then
                 --- draw date  ----
@@ -243,18 +240,18 @@ BEGIN
                 if V_GLOBAL_TRANS_ID is null then
                     SET V_GLOBAL_TRANS_ID = '';
                 end if;
-                SET V_JSON='{"drawGameWagerDetails":'||
-                           '{"drawTimes":['||V_UNIX_TIMESTAMP||'],'||
-                           '"drawIds":['||V_DRAW_IDS||']},'||
-                           '"drawGameValidationDetails":'||
-                           '{"prizeTier":"'||V_TIER||'",'||
-                           '"jurisdiction":'||V_JURISDICTION||','||
-                           '"refExternalId":"'||V_GLOBAL_TRANS_ID||'",'||
-                           '"validationType":"CASH",'||
-                           '"winSet":'||V_WIN_SET||','||
-                           '"drawNumber":'||V_DRAW||','||
-                           '"prizeType":"CASH",'||
-                           '"winningDivision":'||V_DIVISION||'}}';
+                SET V_JSON='"{""drawGameWagerDetails"":'||
+                            '{""drawTimes"":['||V_UNIX_TIMESTAMP||'],'||
+                            '""drawIds"":['||V_DRAW_IDS||']},'||
+                            '""drawGameValidationDetails"":'||
+                            '{""prizeTier"":""'||V_TIER||'"",'||
+                            '""jurisdiction"":'||V_JURISDICTION||','||
+                            '""refExternalId"":""'||V_GLOBAL_TRANS_ID||'"",'||
+                            '""validationType"":""CASH"",'||
+                            '""winSet"":'||V_WIN_SET||','||
+                            '""drawNumber"":'||V_DRAW||','||
+                            '""prizeType"":""CASH"",'||
+                            '""winningDivision"":'||V_DIVISION||'}}"';
             end if;
             INSERT INTO TXSTORE.MIGRATED_TX_JSON (uuid,json
             ) VALUES (V_UUID,V_JSON);

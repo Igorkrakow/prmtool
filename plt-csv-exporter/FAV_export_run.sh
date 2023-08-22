@@ -12,7 +12,7 @@ log_with_timestamp() {
   echo "$current_timestamp - $1" | tee -a $logfile
 }
 num_rows=100000
-fileNameEndDate=$(date -d "$current_timestamp" +%Y%m%d)
+fileNameEndDate=$(date -d "$current_timestamp" +%Y%m%d-%H%M%S)
 db2 connect to pddb
 log_with_timestamp "CREATE favorite-group_ files"
 #####################
@@ -38,7 +38,7 @@ db2 terminate
 ###########################
 csvFileName="favorite-group"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in favorite-group_unix-*
 do
 mv "$file" "$file.csv"
@@ -112,7 +112,7 @@ db2 export to favorite-board_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                                  null as tertiary_selections,
                                  null as addon_selection,
                                  BOARDINDEX,
-                                 MODIFIER
+                                 '\"'||MODIFIER||'\"'
                              FROM GIS.DGFAVORITEBOARD"
 ###########################
 db2 terminate
@@ -120,7 +120,7 @@ db2 terminate
 ###########################
 csvFileName="favorite-board"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in favorite-board_unix-*
 do
 mv "$file" "$file.csv"
@@ -170,8 +170,8 @@ db2 export to favorite-wager_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
            TOTALPRICE as price,
            stake as stake,
            NULL as NAME,
-           TSCREATED as created_ts,
-           TSLASTMODIFIED as modified_ts,
+           varchar_format(TSCREATED,'YYYY-MM-DD HH24:MI:SS.FF3') as created_ts,
+           varchar_format(TSLASTMODIFIED,'YYYY-MM-DD HH24:MI:SS.FF3') as modified_ts,
            IDDGFAVORITEWAGERGROUP as favorite_group_id,
            'false' as OVERTIMEPLAYED -- new implementation
     FROM GIS.DGFAVORITEWAGER
@@ -182,7 +182,7 @@ db2 terminate
 ###########################
 csvFileName="favorite-wager"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in favorite-wager_unix-*
 do
 mv "$file" "$file.csv"
@@ -233,7 +233,7 @@ db2 terminate
 ###########################
 csvFileName="favorite-stack"
 ###########################
-split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'_'
+split --numeric-suffixes --suffix-length=3  -l $num_rows $csvFileName'_TMP.csv' $csvFileName'_unix-'$fileNameEndDate'-'
 for file in favorite-stack_unix-*
 do
 mv "$file" "$file.csv"
