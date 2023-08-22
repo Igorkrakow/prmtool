@@ -22,6 +22,7 @@ fi
 
 start_table="BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '42710' BEGIN END; EXECUTE IMMEDIATE '"
 start_index="BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '01550' BEGIN END; EXECUTE IMMEDIATE '"
+start_truncate="BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '42704' BEGIN END; EXECUTE IMMEDIATE '"
 end="';END"
 
 ##########    Create TMP table MIGRATED_TX_TRANSACTION   ###########
@@ -29,6 +30,33 @@ end="';END"
 #####################
 db2 connect to pddb
 #####################
+
+echo "Do you want to drop all temp tables before run create(all data from MIGRATED_TX_DRAW_ENTRY, MIGR_OPEN_TX_HEADER, MIGRATED_RESULTS, MIGR_TX_HEADER, MIGRATED_TX_JSON, MIGRATED_TX_TRANSACTION)? [Y/N]"
+read -r response
+if [[ "$response" == "Y" ]] || [[ "$response" == "y" ]]; then
+  log_with_timestamp "Truncate temp tables"
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATED_RESULTS IMMEDIATE $end"| tee -a $logfile
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY IMMEDIATE $end"| tee -a $logfile
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGR_TX_HEADER IMMEDIATE $end"| tee -a $logfile
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATED_TX_JSON IMMEDIATE $end"| tee -a $logfile
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION IMMEDIATE $end"| tee -a $logfile
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGR_OPEN_TX_HEADER IMMEDIATE $end"| tee -a $logfile
+  log_with_timestamp "Drop temp tables"
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY $end"| tee -a $logfile
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGRATED_RESULTS $end"| tee -a $logfile
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGR_TX_HEADER $end"| tee -a $logfile
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGRATED_TX_JSON $end"| tee -a $logfile
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGRATED_TX_TRANSACTION $end"| tee -a $logfile
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGR_OPEN_TX_HEADER $end"| tee -a $logfile
+  db2 "$start_truncate DROP INDEX TXSTORE.MIGRATED_TX_TRANSACTION_TX_TRANSACTION_ID $end"| tee -a $logfile
+  db2 "$start_truncate DROP INDEX TXSTORE.UQIDXMIGR_OPEN_TX_HEADER $end"| tee -a $logfile
+  db2 "$start_truncate DROP INDEX TXSTORE.XIDXMIGR_OPEN_TX_HEADERPLAYERID $end"| tee -a $logfile
+  db2 "$start_truncate DROP INDEX TXSTORE.UQIDXMIGR_TX_HEADER $end"| tee -a $logfile
+  db2 "$start_truncate DROP INDEX TXSTORE.XIDXMIGR_TX_HEADERPLAYERID $end"| tee -a $logfile
+  db2 "$start_truncate DROP INDEX IDXMIGRATED_TX_DRAW_ENTRY $end"| tee -a $logfile
+
+fi
+
 log_with_timestamp "CREATE TABLE MIGRATED_TX_TRANSACTION"
 db2 "$start_table CREATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION (
                             tx_transaction_id int NOT NULL,
