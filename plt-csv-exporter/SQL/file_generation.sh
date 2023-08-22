@@ -264,7 +264,7 @@ db2 export to tx-result_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                 varchar_format(r.TRANSACTION_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3') as ts_created,
                 varchar_format(r.TRANSACTION_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3') as ts_modified,
                 r.TX_DRAW_ENTRY_ID as tx_draw_entry_id,
-                r.LOTTERY_TX_HEADER_ID as validation_id,
+                r.UUID as validation_id,
                 NULL as claim_id,
                 NULL as prize_description,
                 'CASH' as prize_type,
