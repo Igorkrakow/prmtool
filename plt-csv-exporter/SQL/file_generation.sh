@@ -154,12 +154,38 @@ db2 export to tx-draws_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                 E.DRAWNUMBER as draw_id,
                 null as draw_name,
                 varchar_format(E.DRAWDATE,'YYYY-MM-DD HH24:MI:SS.FF3') as draw_time,
-                case when g.NAME is not null then
-                    'OPEN'
-                else 'CLOSE' end as draw_status
+                'CLOSE' as draw_status
             FROM GIS.DGGAMEEVENT E
-            left join GIS.DGGAME G ON G.IDDGGAME=E.IDDGGAME
-            AND G.IDDGGAMEEVENT_CURRENT=E.IDDGGAMEEVENT"
+                     join TXSTORE.MIGRATED_TX_DRAW_ENTRY MTDE on E.DRAWNUMBER=MTDE.DRAWNUMBER
+                     join TXSTORE.MIGRATED_TX_TRANSACTION MTT on mtde.UUID = mtt.UUID
+                     left join GIS.DGGAME G ON G.IDDGGAME=E.IDDGGAME
+            where E.IDDGGAMEEVENT < G.IDDGGAMEEVENT_CURRENT
+                AND NOT EXISTS (
+                      SELECT 1 FROM TXSTORE.MIGRATED_TX_DRAWS TMD
+                      WHERE TMD.IDDGGAME = E.IDDGGAME AND TMD.DRAWNUMBER = E.DRAWNUMBER
+                  )
+                group by E.IDDGGAME ,
+                         E.DRAWNUMBER ,
+                         varchar_format(E.DRAWDATE,'YYYY-MM-DD HH24:MI:SS.FF3')"
+
+log_with_timestamp "Copy data to MIGRATED_TX_DRAWS from DGGAMEEVENT"
+db2	"INSERT INTO TXSTORE.MIGRATED_TX_DRAWS (IDDGGAME, DRAWNUMBER)
+      SELECT
+      E.IDDGGAME  as product_id,
+      E.DRAWNUMBER                                            as draw_id
+        FROM GIS.DGGAMEEVENT E
+        join TXSTORE.MIGRATED_TX_DRAW_ENTRY MTDE on E.DRAWNUMBER = MTDE.DRAWNUMBER
+        join TXSTORE.MIGRATED_TX_TRANSACTION MTT on mtde.UUID = mtt.UUID
+        left join GIS.DGGAME G ON G.IDDGGAME = E.IDDGGAME
+      where E.IDDGGAMEEVENT < G.IDDGGAMEEVENT_CURRENT
+            AND NOT EXISTS(SELECT 1
+                           FROM TXSTORE.MIGRATED_TX_DRAWS TMD
+                           WHERE TMD.IDDGGAME = E.IDDGGAME
+                           AND TMD.DRAWNUMBER = E.DRAWNUMBER)
+      group by E.IDDGGAME,
+               E.DRAWNUMBER,
+               varchar_format(E.DRAWDATE, 'YYYY-MM-DD HH24:MI:SS.FF3')"| tee -a $logfile
+
 ###########################
 db2 terminate
 ###########################

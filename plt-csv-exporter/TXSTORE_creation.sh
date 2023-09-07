@@ -41,6 +41,8 @@ if [[ "$response" == "Y" ]] || [[ "$response" == "y" ]]; then
   db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATED_TX_JSON IMMEDIATE $end"| tee -a $logfile
   db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATED_TX_TRANSACTION IMMEDIATE $end"| tee -a $logfile
   db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGR_OPEN_TX_HEADER IMMEDIATE $end"| tee -a $logfile
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATED_TX_DRAWS IMMEDIATE $end"| tee -a $logfile
+  db2 "$start_truncate TRUNCATE TABLE TXSTORE.MIGRATION_ERRORS IMMEDIATE $end"| tee -a $logfile
   log_with_timestamp "Drop temp tables"
   db2 "$start_truncate DROP TABLE TXSTORE.MIGRATED_TX_DRAW_ENTRY $end"| tee -a $logfile
   db2 "$start_truncate DROP TABLE TXSTORE.MIGRATED_RESULTS $end"| tee -a $logfile
@@ -53,8 +55,9 @@ if [[ "$response" == "Y" ]] || [[ "$response" == "y" ]]; then
   db2 "$start_truncate DROP INDEX TXSTORE.XIDXMIGR_OPEN_TX_HEADERPLAYERID $end"| tee -a $logfile
   db2 "$start_truncate DROP INDEX TXSTORE.UQIDXMIGR_TX_HEADER $end"| tee -a $logfile
   db2 "$start_truncate DROP INDEX TXSTORE.XIDXMIGR_TX_HEADERPLAYERID $end"| tee -a $logfile
-  db2 "$start_truncate DROP INDEX IDXMIGRATED_TX_DRAW_ENTRY $end"| tee -a $logfile
-
+  db2 "$start_truncate DROP INDEX TXSTORE.IDXMIGRATED_TX_DRAW_ENTRY $end"| tee -a $logfile
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGRATED_TX_DRAWS $end"| tee -a $logfile
+  db2 "$start_truncate DROP TABLE TXSTORE.MIGRATION_ERRORS $end"| tee -a $logfile
 fi
 
 log_with_timestamp "CREATE TABLE MIGRATED_TX_TRANSACTION"
@@ -101,6 +104,14 @@ db2 "$start_table
           PLAYER_ID    BIGINT not null,
           UUID         VARCHAR(200))
       $end" | tee -a $logfile
+
+log_with_timestamp "CREATE TABLE MIGRATION_ERRORS"
+db2 "$start_table create table TXSTORE.MIGRATION_ERRORS
+(
+    TABLE_NAME VARCHAR(30),
+    ID         BIGINT,
+    STATUS     VARCHAR(300)
+)$end" | tee -a $logfile
 
 log_with_timestamp "CREATE TABLE MIGR_OPEN_TX_HEADER"
 db2 "$start_table
@@ -164,6 +175,14 @@ db2 "CREATE OR REPLACE VIEW TXSTORE.VIEW_MIGRATED_TX AS
         FROM TXSTORE.MIGR_TX_HEADER H
              INNER JOIN TXSTORE.LOTTERY_TX_HEADER L ON L.LOTTERY_TX_HEADER_ID=H.TX_HEADER_ID
              INNER JOIN TXSTORE.STRING_TX_BODY B ON B.UUID=H.UUID" | tee -a $logfile
+
+###   Create TABLE  MIGRATED_TX_DRAWS  ####
+
+log_with_timestamp "CREATE TABLE MIGRATED_TX_DRAWS"
+db2 " $start_table CREATE TABLE TXSTORE.MIGRATED_TX_DRAWS (
+                                           IDDGGAME bigint not null,
+                                           DRAWNUMBER INTEGER not null
+)$end" | tee -a $logfile
 
 
 ###   Create TABLE  MIGRATED_TX_DRAW_ENTRY  ####
@@ -450,9 +469,6 @@ log_with_timestamp "grant access to BATCH_STEP_EXECUTION_SEQ"
 db2 "grant alter, usage on sequence GIS.BATCH_STEP_EXECUTION_SEQ to GTDBDEV1" | tee -a $logfile
 db2 "grant alter, usage on sequence GIS.BATCH_STEP_EXECUTION_SEQ to GTDBAPP1" | tee -a $logfile
 
-echo "" | tee -a $logfile
-echo "------------ END creation ------------" | tee -a $logfile
-
 ###   CREATE TABLE MIGRATED_TX_JSON   ###########
 log_with_timestamp "CREATE TABLE MIGRATED_TX_JSON"
 db2 " $start_table
@@ -474,3 +490,5 @@ db2 -td@ -vf SQL/CREATE_PROCEDURE_RemoveXmlns.db2 | tee -a $logfile
 log_with_timestamp "CREATE PROCEDURE TX_TRANSACTION_JSON_EXPORT"
 db2 -td@ -vf SQL/CREATE_PROCEDURE_TX_TRANSACTION_JSON_EXPORT.db2 | tee -a $logfile
 
+echo "" | tee -a $logfile
+echo "------------ END creation ------------" | tee -a $logfile

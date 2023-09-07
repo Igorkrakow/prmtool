@@ -138,7 +138,7 @@ log_with_timestamp "UPDATE WIN_STATUS for MIGRATED_TX_DRAW_ENTRY"
 db2 "UPDATE TXSTORE.MIGRATED_TX_DRAW_ENTRY SET WIN_STATUS = 'WINNING' where ID in(select TX_DRAW_ENTRY_ID from TXSTORE.MIGRATED_RESULTS)"
 
 sh SQL/file_generation.sh "$endDate"
-sh SQL/kpi.sh "$project" "$countMAX"
+sh SQL/kpi.sh "$project" "$countMIN" "$countMAX"
 #####################
 
 echo "" | tee -a $logfile

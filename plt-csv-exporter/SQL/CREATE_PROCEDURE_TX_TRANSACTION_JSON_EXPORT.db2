@@ -84,13 +84,12 @@ BEGIN
             end if;
             end if;
 
+            ------------  VALIDATION  ------------
             IF V_LOTTERY_TRANSACTION_TYPE='VALIDATION' then
 
                 SELECT MAX(TX_HEADER_ID) into V_OPEN_TX_HEADER_ID FROM TXSTORE.MIGR_OPEN_TX_HEADER
-                                                             where GLOBAL_TRANS_ID=V_GLOBAL_TRANS_ID or (
-                                                                CDC=V_CDC and SERIAL=V_SERIAL
-
-                    );
+                    where (GLOBAL_TRANS_ID=V_GLOBAL_TRANS_ID and  SERIAL=V_SERIAL)
+                    or (CDC=V_CDC and SERIAL=V_SERIAL);
                 IF V_OPEN_TX_HEADER_ID is not null then
                     SET V_IS_OPEN = TRUE;
                     insert into TXSTORE.MIGR_OPEN_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID,GLOBAL_TRANS_ID,CDC,SERIAL)

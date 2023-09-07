@@ -7,9 +7,9 @@
 #set variable
 logfile="scriptlog.log"
 
-min_id_from_first_run=100000
 project=$1
-max_id_from_current_run=$2
+min_id_from_current_run=$2
+max_id_from_current_run=$3
 if [ "$project" = "KY" ]; then
 	project_condition="PRODUCT NOT IN (30,35) "
 elif [ "$project" = "RI" ]; then
@@ -23,8 +23,19 @@ log_with_timestamp() {
   echo "" | tee -a $logfile
   echo "$current_timestamp - $1" | tee -a $logfile
 }
+#start_insert="BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '02000' BEGIN END; EXECUTE IMMEDIATE '"
+#end="';END"
 
 db2 connect to PDDB
+
+#min_id_from_first_run=100000
+min_id_from_first_run=$(db2 -x "SELECT TX_HEADER_ID FROM TXSTORE.TX_HEADER where uuid = (SELECT UUID FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY FETCH FIRST 1 ROW ONLY)")
+if (( $min_id_from_first_run < $max_id_from_current_run )); then
+    min="$min_id_from_first_run"
+else
+    min="$max_id_from_current_run"
+fi
+
 db2 export to kpi_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'name',
@@ -79,10 +90,14 @@ db2 export to kpis_results_2migrated.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.Migrated results' as name,
          count(*) from (select distinct (LOTTERY_TX_HEADER_ID) from TXSTORE.MIGRATED_RESULTS)"
-db2 export to kpis_results_3Wagers_without_draw_id.csv OF DEL MODIFIED BY NOCHARDEL  "
-    SELECT
-        'RESULT.Validations for dirty WAGERS(without start-end draw id)' as name,
-        count(DISTINCT TX_TRANSACTION_ID) FROM
+
+############## insert into MIGRATION ERRORS ##############
+db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
+        SELECT
+        'MIGRATED_RESULTS',
+        TX_TRANSACTION_ID,
+        'RESULT.Validations for dirty WAGERS(without start-end draw id)' as name
+        FROM
             (SELECT MTV.TX_TRANSACTION_ID FROM TXSTORE.MIGRATED_TX_TRANSACTION t
              join TXSTORE.MIGRATED_TX_TRANSACTION MTV on MTV.GLOBAL_TRANS_ID=t.GLOBAL_TRANS_ID
                                                       and MTV.SERIAL=t.SERIAL
@@ -94,82 +109,76 @@ db2 export to kpis_results_3Wagers_without_draw_id.csv OF DEL MODIFIED BY NOCHAR
                                                         and MTV.SERIAL=t.SERIAL
                                                         and MTV.TRANSACTION_TYPE='VALIDATION'
              where t.TRANSACTION_TYPE = 'WAGER' and t.START_DRAW_NUMBER is null
-             )"
-db2 export to kpis_results_4VALIDATIONs_without_WAGERs.csv OF DEL MODIFIED BY NOCHARDEL  "
-    SELECT
-        'RESULT.VALIDATIONs without WAGERs' as name,
-        count(*)
-    FROM TXSTORE.MIGRATED_TX_TRANSACTION LTV
-        WHERE LTV.TRANSACTION_TYPE='VALIDATION' and
-              LTV.TX_TRANSACTION_ID not in (
-                    SELECT tv.TX_TRANSACTION_ID
-                    FROM TXSTORE.MIGRATED_TX_TRANSACTION as tv
-                             JOIN TXSTORE.LOTTERY_TX_HEADER LTW
-                                 ON tv.SERIAL = LTW.SERIAL
-                                 and tv.CDC = LTW.CDC
-                                 AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
-                            WHERE tv.TRANSACTION_TYPE='VALIDATION'
-                    UNION ALL
-                    SELECT tv.TX_TRANSACTION_ID
-                    FROM TXSTORE.MIGRATED_TX_TRANSACTION as tv
-                             JOIN TXSTORE.LOTTERY_TX_HEADER LTW
-                                  ON tv.GLOBAL_TRANS_ID = LTW.GLOBAL_TRANS_ID
-                                  and tv.SERIAL = LTW.SERIAL
-                                  AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
-                    WHERE tv.TRANSACTION_TYPE='VALIDATION')"
+             )" | tee -a $logfile
+db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
+        SELECT 'MIGRATED_RESULTS',
+               MTTV.TX_TRANSACTION_ID,
+               'Result validation with wagers_before_first_day_of_run'
+        FROM TXSTORE.MIGRATED_TX_TRANSACTION MTTV
+                 JOIN (
+                        SELECT W.LOTTERY_TX_HEADER_ID, W.GLOBAL_TRANS_ID, W.SERIAL, W.CDC
+                        FROM (
+                                 SELECT LTH.LOTTERY_TX_HEADER_ID, LTH.GLOBAL_TRANS_ID, LTH.SERIAL, LTH.CDC
+                                 FROM TXSTORE.LOTTERY_TX_HEADER LTH
+                                          JOIN TXSTORE.TX_HEADER TH ON LTH.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
+                                 WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'WAGER'
+                                   AND (TH.TX_HEADER_ID < 58377517 OR TH.TX_HEADER_ID > 61390411)
+                             ) W
+                        JOIN (
+                                 SELECT MTH.GLOBAL_TRANS_ID, MTH.SERIAL, MTH.CDC
+                                 FROM TXSTORE.MIGRATED_TX_TRANSACTION MTH
+                                 WHERE MTH.TRANSACTION_TYPE = 'VALIDATION'
+                                       AND MTH.TX_TRANSACTION_ID NOT IN (SELECT LOTTERY_TX_HEADER_ID FROM TXSTORE.MIGRATED_RESULTS)
+                             ) V ON (W.GLOBAL_TRANS_ID = V.GLOBAL_TRANS_ID AND W.SERIAL = V.SERIAL)
+                                 OR (W.CDC = V.CDC AND W.SERIAL = V.SERIAL)
+                    ) R ON (MTTV.GLOBAL_TRANS_ID = R.GLOBAL_TRANS_ID OR MTTV.CDC = R.CDC)
+                        AND MTTV.SERIAL = R.SERIAL
+        WHERE MTTV.TRANSACTION_TYPE = 'VALIDATION'" | tee -a $logfile
 
-db2 export to kpis_results_5wagers_before_first_day_of_run.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
+        SELECT
+                'MIGRATED_RESULTS',
+                LTV.TX_TRANSACTION_ID,
+                'RESULT.VALIDATIONs without WAGERs'
+        FROM TXSTORE.MIGRATED_TX_TRANSACTION LTV
+        WHERE LTV.TRANSACTION_TYPE='VALIDATION'
+          AND LTV.TX_TRANSACTION_ID NOT IN (
+            SELECT tv.TX_TRANSACTION_ID
+            FROM TXSTORE.MIGRATED_TX_TRANSACTION as tv
+                     JOIN TXSTORE.LOTTERY_TX_HEADER LTW ON (
+                    (tv.SERIAL = LTW.SERIAL AND tv.CDC = LTW.CDC) OR
+                    (tv.GLOBAL_TRANS_ID = LTW.GLOBAL_TRANS_ID AND tv.SERIAL = LTW.SERIAL)
+                )
+            WHERE tv.TRANSACTION_TYPE='VALIDATION' AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
+        )" | tee -a $logfile
+
+db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
+        SELECT 'MIGRATED_RESULTS',
+                V.TX_TRANSACTION_ID,
+                'VALIDATION LINKED TO WAGER WITH DIFFERENT DRAW NUMBERS'
+        FROM (
+                 SELECT LTH.GLOBAL_TRANS_ID, LTH.SERIAL, LTH.CDC,LTH.START_DRAW_NUMBER,LTH.END_DRAW_NUMBER
+                 FROM TXSTORE.MIGRATED_TX_TRANSACTION LTH
+                          JOIN TXSTORE.TX_HEADER TH ON LTH.TX_TRANSACTION_ID = TH.TX_HEADER_ID
+                 WHERE LTH.TRANSACTION_TYPE = 'WAGER'
+             ) as W
+            JOIN (
+                SELECT MTH.TX_TRANSACTION_ID, MTH.GLOBAL_TRANS_ID, MTH.SERIAL, MTH.CDC,MTH.START_DRAW_NUMBER
+                FROM TXSTORE.MIGRATED_TX_TRANSACTION MTH
+                WHERE MTH.TRANSACTION_TYPE = 'VALIDATION'
+                  AND MTH.TX_TRANSACTION_ID NOT IN (SELECT LOTTERY_TX_HEADER_ID FROM TXSTORE.MIGRATED_RESULTS)
+            ) as V ON (W.GLOBAL_TRANS_ID = V.GLOBAL_TRANS_ID AND W.SERIAL = V.SERIAL)
+                OR (W.CDC = V.CDC AND W.SERIAL = V.SERIAL)
+        WHERE V.START_DRAW_NUMBER NOT BETWEEN W.START_DRAW_NUMBER and W.END_DRAW_NUMBER and v.TX_TRANSACTION_ID not in (
+            SELECT ID FROM TXSTORE.MIGRATION_ERRORS
+            )" | tee -a $logfile
+db2 export to kpis_results_3_errors.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
-        'RESULT.Wagers before first day of run' as name,
-        SUM(Count) AS TotalCount
-    FROM (   SELECT COUNT(*) AS Count
-             FROM TXSTORE.LOTTERY_TX_HEADER LTH
-                      JOIN TXSTORE.TX_HEADER TH ON LTH.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
-                      JOIN (SELECT LTH.GLOBAL_TRANS_ID, LTH.SERIAL, LTH.CDC
-                                FROM TXSTORE.MIGRATED_TX_TRANSACTION MTH
-                                JOIN TXSTORE.LOTTERY_TX_HEADER LTH
-                                    ON MTH.TX_TRANSACTION_ID = LTH.LOTTERY_TX_HEADER_ID
-                                WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
-                                  AND LTH.LOTTERY_TX_HEADER_ID NOT IN (SELECT LOTTERY_TX_HEADER_ID
-                                                                        FROM TXSTORE.MIGRATED_RESULTS)
-                            ) INSEL ON LTH.GLOBAL_TRANS_ID = INSEL.GLOBAL_TRANS_ID
-                                    AND LTH.SERIAL = INSEL.SERIAL
-             WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'WAGER'
-                AND (TH.TX_HEADER_ID<$min_id_from_first_run -- min id from first run
-                    or TH.TX_HEADER_ID> $max_id_from_current_run)
-             UNION ALL
-             SELECT COUNT(*) AS Count
-             FROM TXSTORE.LOTTERY_TX_HEADER LTH
-                      JOIN TXSTORE.TX_HEADER TH ON LTH.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
-                      JOIN (SELECT LTH.GLOBAL_TRANS_ID, LTH.SERIAL, LTH.CDC
-                             FROM TXSTORE.MIGRATED_TX_TRANSACTION MTH
-                             JOIN TXSTORE.LOTTERY_TX_HEADER LTH
-                                 ON MTH.TX_TRANSACTION_ID = LTH.LOTTERY_TX_HEADER_ID
-                             WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
-                               AND LTH.LOTTERY_TX_HEADER_ID NOT IN (SELECT LOTTERY_TX_HEADER_ID
-                                                                    FROM TXSTORE.MIGRATED_RESULTS)
-                            ) INSEL ON LTH.CDC = INSEL.CDC AND LTH.SERIAL = INSEL.SERIAL
-             WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'WAGER'
-               AND (TH.TX_HEADER_ID<$min_id_from_first_run
-                 or TH.TX_HEADER_ID> $max_id_from_current_run) --max_id_from_current_run
-               AND TH.TX_HEADER_ID not in (
-                                         SELECT LTH.LOTTERY_TX_HEADER_ID AS Count
-                                         FROM TXSTORE.LOTTERY_TX_HEADER LTH
-                                                  JOIN TXSTORE.TX_HEADER TH ON LTH.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
-                                                  JOIN (SELECT LTH.GLOBAL_TRANS_ID, LTH.SERIAL, LTH.CDC
-                                                        FROM TXSTORE.MIGRATED_TX_TRANSACTION MTH
-                                                                 JOIN TXSTORE.LOTTERY_TX_HEADER LTH
-                                                                      ON MTH.TX_TRANSACTION_ID = LTH.LOTTERY_TX_HEADER_ID
-                                                        WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'VALIDATION'
-                                                          AND LTH.LOTTERY_TX_HEADER_ID NOT IN (SELECT LOTTERY_TX_HEADER_ID
-                                                                                               FROM TXSTORE.MIGRATED_RESULTS)
-                                         ) INSEL ON LTH.GLOBAL_TRANS_ID = INSEL.GLOBAL_TRANS_ID
-                                             AND LTH.SERIAL = INSEL.SERIAL
-                                         WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'WAGER'
-                                           AND (TH.TX_HEADER_ID<$min_id_from_first_run
-                                             or TH.TX_HEADER_ID> $max_id_from_current_run)
-             )
-         ) AS SubQuery"
+        'RESULT. '|| e.STATUS,
+        count(DISTINCT e.ID)
+        FROM TXSTORE.MIGRATION_ERRORS  as e
+        join TXSTORE.MIGRATED_TX_TRANSACTION as t on t.TX_TRANSACTION_ID=e.ID
+        group by e.STATUS"
 
 echo "---------------------------"
 echo "DRAW ENTRY"
@@ -207,11 +216,11 @@ echo "---------------------------"
 echo "DRAW"
 echo "---------------------------"
 
-db2 export to kpis_draw_4entry_wining_not_winung.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to kpis_draw_5.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'DRAWS. all draws' ,
         count(*)
-        FROM GIS.DGGAMEEVENT E"
+        FROM TXSTORE.MIGRATED_TX_DRAWS"
 
 ###########################
 db2 terminate
