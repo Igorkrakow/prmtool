@@ -30,10 +30,10 @@ db2 connect to PDDB
 
 #min_id_from_first_run=100000
 min_id_from_first_run=$(db2 -x "SELECT TX_HEADER_ID FROM TXSTORE.TX_HEADER where uuid = (SELECT UUID FROM TXSTORE.MIGRATED_TX_DRAW_ENTRY FETCH FIRST 1 ROW ONLY)")
-if (( $min_id_from_first_run < $max_id_from_current_run )); then
+if (( $min_id_from_first_run < $min_id_from_current_run )); then
     min="$min_id_from_first_run"
 else
-    min="$max_id_from_current_run"
+    min="$min_id_from_current_run"
 fi
 
 db2 export to kpi_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
@@ -122,7 +122,7 @@ db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
                                  FROM TXSTORE.LOTTERY_TX_HEADER LTH
                                           JOIN TXSTORE.TX_HEADER TH ON LTH.LOTTERY_TX_HEADER_ID = TH.TX_HEADER_ID
                                  WHERE LTH.LOTTERY_TRANSACTION_TYPE = 'WAGER'
-                                   AND (TH.TX_HEADER_ID < 58377517 OR TH.TX_HEADER_ID > 61390411)
+                                   AND (TH.TX_HEADER_ID < $min OR TH.TX_HEADER_ID > $max_id_from_current_run)
                              ) W
                         JOIN (
                                  SELECT MTH.GLOBAL_TRANS_ID, MTH.SERIAL, MTH.CDC
