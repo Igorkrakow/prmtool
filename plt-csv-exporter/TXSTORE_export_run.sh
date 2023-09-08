@@ -2,11 +2,11 @@
 # The following three lines have been added by UDB DB2.
 # To run this file use command: sh TXSTORE_export_run.sh "KY(RI)" "2023-01-01 00:00:00.000000" "2023-06-23 00:00:00.000000" 1929238
 #######   set variable ########
-if [ $# -lt 4 ];
+if [ $# -lt 3 ];
 then
   echo "$0: Missing arguments"
   exit 1
-elif [ $# -gt 5 ];
+elif [ $# -gt 4 ];
 then
   echo "$0: Too many arguments: $@"
   exit 1

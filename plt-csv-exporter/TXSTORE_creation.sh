@@ -109,7 +109,7 @@ db2 -td@ -f SQL/CREATE/create_migrated_tx_json.sql | tee -a $logfile
 
 ###   CREATE PROCEDURE to handle primarry/secondary board-data ###########
 log_with_timestamp "CREATE PROCEDURE to handle primarry/secondary board-data"
-db2 -td@ -f SQL/CREATE/create_or_replace_procedure_txstore.handle_part.sql | tee -a $logfile
+db2 -td@ -f SQL/CREATE/create_procedure_txstore_handle_part.sql | tee -a $logfile
 
 ###   CREATE PROCEDURE RemoveXmlns ###########
 log_with_timestamp "CREATE PROCEDURE RemoveXmlns"
