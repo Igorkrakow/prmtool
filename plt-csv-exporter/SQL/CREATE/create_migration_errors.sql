@@ -3,6 +3,6 @@ BEGIN DECLARE CONTINUE HANDLER FOR SQLSTATE '42710' BEGIN END;
 create table TXSTORE.MIGRATION_ERRORS
                        (TABLE_NAME VARCHAR(30),
                         ID         BIGINT,
-                        STATUS     VARCHAR(300)';
+                        STATUS     VARCHAR(300))';
 END
 @
