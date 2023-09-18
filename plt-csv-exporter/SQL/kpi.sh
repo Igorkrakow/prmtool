@@ -46,31 +46,47 @@ echo "---------------------------"
 echo "TRANSACTION KPIS"
 echo "---------------------------"
 
+log_with_timestamp "Counting TRANSACTION. all transactions on db' as name"
+echo "Counting TRANSACTION. all transactions on db' as name"
 db2 export to kpis_transactions_1all_.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'TRANSACTION. all transactions on db' as name,
         count(*) from TXSTORE.MIGR_TX_HEADER"
 
+log_with_timestamp "Counting TRANSACTION. all transactions by type' as name"
+echo "Counting TRANSACTION. all transactions by type' as name"
 db2 export to kpis_transactions_2all_by_types.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'TRANSACTION. all transactions. '||LOTTERY_TRANSACTION_TYPE,
         count(*) FROM TXSTORE.MIGR_TX_HEADER MTH
         JOIN TXSTORE.LOTTERY_TX_HEADER LTH ON MTH.TX_HEADER_ID = LTH.LOTTERY_TX_HEADER_ID
         GROUP BY LOTTERY_TRANSACTION_TYPE"
+
+log_with_timestamp "Counting TRANSACTION. all transactions (migrated)' as name"
+echo "Counting TRANSACTION. all transactions (migrated)' as name"
 db2 export to kpis_transactions_3closed.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'TRANSACTION. closed transactions (migrated)' as name,
         count(*) from TXSTORE.MIGRATED_TX_TRANSACTION"
+
+log_with_timestamp "Counting TRANSACTION. closed transactions"
+echo "Counting TTRANSACTION. closed transactions"
 db2 export to kpis_transactions_4closed_by_types.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'TRANSACTION. closed transactions. '||TRANSACTION_TYPE,
         count(*)
         from TXSTORE.MIGRATED_TX_TRANSACTION
              group by TRANSACTION_TYPE"
+
+log_with_timestamp "Counting open transactions (not migrated yet)"
+echo "Counting open transactions (not migrated yet)"
 db2 export to kpis_transactions_5open.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'TRANSACTION. open transactions (not migrated yet)' as name,
         count(*) from TXSTORE.MIGR_OPEN_TX_HEADER"
+
+log_with_timestamp "Counting open transactions by type"
+echo "Counting open transactions by type"
 db2 export to kpis_transactions_6open_by_types.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'TRANSACTION. open transactions. '||LOTTERY_TRANSACTION_TYPE,count(*)
@@ -81,35 +97,48 @@ db2 export to kpis_transactions_6open_by_types.csv OF DEL MODIFIED BY NOCHARDEL 
 echo "---------------------------"
 echo "RESULTS KPIS"
 echo "---------------------------"
+
+log_with_timestamp "Counting RESULT.All validations"
+echo "Counting RESULT.All validations"
 db2 export to kpis_results_1all_validations.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.All validations' as name,
         count(*) from TXSTORE.MIGRATED_TX_TRANSACTION MTX
                        WHERE MTX.TRANSACTION_TYPE = 'VALIDATION'"
+
+log_with_timestamp "Counting RESULT.Migrated results"
+echo "Counting RESULT.Migrated results"
 db2 export to kpis_results_2migrated.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
         'RESULT.Migrated results' as name,
          count(*) from (select distinct (LOTTERY_TX_HEADER_ID) from TXSTORE.MIGRATED_RESULTS)"
 
 ############## insert into MIGRATION ERRORS ##############
+
+log_with_timestamp "Counting RESULT.Validations for dirty WAGERS(without start-end draw id)"
+echo "Counting RESULT.Validations for dirty WAGERS(without start-end draw id)"
 db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
         SELECT
-        'MIGRATED_RESULTS',
-        TX_TRANSACTION_ID,
-        'RESULT.Validations for dirty WAGERS(without start-end draw id)' as name
+            'MIGRATED_RESULTS',
+            TX_TRANSACTION_ID,
+            'RESULT.Validations for dirty WAGERS(without start-end draw id)' as name
         FROM
             (SELECT MTV.TX_TRANSACTION_ID FROM TXSTORE.MIGRATED_TX_TRANSACTION t
-             join TXSTORE.MIGRATED_TX_TRANSACTION MTV on MTV.GLOBAL_TRANS_ID=t.GLOBAL_TRANS_ID
-                                                      and MTV.SERIAL=t.SERIAL
-                                                      and MTV.TRANSACTION_TYPE='VALIDATION'
+                                                   join TXSTORE.MIGRATED_TX_TRANSACTION MTV on MTV.GLOBAL_TRANS_ID=t.GLOBAL_TRANS_ID
+                and MTV.SERIAL=t.SERIAL
+                and MTV.TRANSACTION_TYPE='VALIDATION'
              where t.TRANSACTION_TYPE = 'WAGER' and t.START_DRAW_NUMBER is null
              UNION ALL
              SELECT MTV.TX_TRANSACTION_ID FROM TXSTORE.MIGRATED_TX_TRANSACTION t
-             join TXSTORE.MIGRATED_TX_TRANSACTION MTV on MTV.CDC=t.CDC
-                                                        and MTV.SERIAL=t.SERIAL
-                                                        and MTV.TRANSACTION_TYPE='VALIDATION'
+                                                   join TXSTORE.MIGRATED_TX_TRANSACTION MTV on MTV.CDC=t.CDC
+                and MTV.SERIAL=t.SERIAL
+                and MTV.TRANSACTION_TYPE='VALIDATION'
+                and MTV.PLAYER_ID =t.PLAYER_ID
              where t.TRANSACTION_TYPE = 'WAGER' and t.START_DRAW_NUMBER is null
-             )" | tee -a $logfile
+               and MTV.GLOBAL_TRANS_ID != t.GLOBAL_TRANS_ID)" | tee -a $logfile
+
+log_with_timestamp "Counting Result validation with wagers_before_first_day_of_run with min $min and max $max_id_from_current_run"
+echo "Counting Result validation with wagers_before_first_day_of_run with min $min and max $max_id_from_current_run"
 db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
         SELECT 'MIGRATED_RESULTS',
                MTTV.TX_TRANSACTION_ID,
@@ -135,6 +164,8 @@ db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
                         AND MTTV.SERIAL = R.SERIAL
         WHERE MTTV.TRANSACTION_TYPE = 'VALIDATION'" | tee -a $logfile
 
+log_with_timestamp "Counting RESULT.VALIDATIONs without WAGERs"
+echo "Counting RESULT.VALIDATIONs without WAGERs"
 db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
         SELECT
                 'MIGRATED_RESULTS',
@@ -152,6 +183,8 @@ db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
             WHERE tv.TRANSACTION_TYPE='VALIDATION' AND LTW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
         )" | tee -a $logfile
 
+log_with_timestamp "Counting VALIDATION LINKED TO WAGER WITH DIFFERENT DRAW NUMBERS"
+echo "Counting VALIDATION LINKED TO WAGER WITH DIFFERENT DRAW NUMBERS"
 db2 "INSERT INTO TXSTORE.MIGRATION_ERRORS (TABLE_NAME, ID, STATUS)
         SELECT 'MIGRATED_RESULTS',
                 V.TX_TRANSACTION_ID,
