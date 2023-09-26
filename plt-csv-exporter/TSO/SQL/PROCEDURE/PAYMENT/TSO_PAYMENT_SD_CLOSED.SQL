@@ -72,7 +72,7 @@ BEGIN
                     start_date_update,
                     end_date_update,
                     delta) VALUES (V_LOTTERY_TX_HEADER_ID,V_PLAYER_ID,
-                                   CASE WHEN V_TRANSACTION_AMOUNT > 0 THEN 'WINNING' ELSE 'LOSE' END,
+                                   CASE WHEN V_TRANSACTION_AMOUNT > 0 THEN 'WINNING' ELSE 'LOSER' END,
                                    V_START_DRAW_NUMBER,V_TRANSACTION_TIME_LOCAL,V_UUID,V_PRODUCT,V_TRANSACTION_AMOUNT,
                                    V_GLOBAL_TRANS_ID,start_time,end_time,start_time,end_time,'i');
 

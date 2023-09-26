@@ -79,7 +79,7 @@ BEGIN
                            THW.PLAYER_ID,
                            CASE WHEN NVL(VAL.TRANSACTION_AMOUNT,0)   > 0
                            THEN 'WINNING'
-                           ELSE 'LOSE' END,
+                           ELSE 'LOSER' END,
                            V_I,
                            CASE WHEN VAL.TRANSACTION_TIME_LOCAL IS NULL THEN WAG.TRANSACTION_TIME_LOCAL
                                 ELSE VAL.TRANSACTION_TIME_LOCAL END,

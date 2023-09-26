@@ -103,8 +103,7 @@ db2 export to TSO_PAYMENT_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
         'OK' LAST_RESULT_DESCRIPTION,
         VARCHAR_FORMAT(CURRENT_TIMESTAMP,'YYYY-MM-DD HH24:MI:SS.FF3') LAST_UPDATE_DATE,
         70 platform_id,
-        case when STATUS = 'WINNING' THEN 'GAME_PLAY_CREDIT'
-             ELSE 'GAME_PLAY_VOID_ROUND' END AS process_id,
+        'GAME_PLAY_CREDIT' process_id,
         'COMPLETED' process_status,
         '' id_process_transaction,
         '' PROXY_ADDRESS,
