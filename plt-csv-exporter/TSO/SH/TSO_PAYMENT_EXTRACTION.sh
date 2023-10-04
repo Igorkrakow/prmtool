@@ -201,8 +201,7 @@ db2 export to TSO_PAYMENT_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
      SELECT
          PLAYER_ID EXTERNAL_ID,
          '8::1::' || PLAYER_ID || '::' || UUID || '::70'  payment_transaction_id,
-         case when STATUS = 'WINNING' THEN 'REAL_MONEY_WINNING'
-                  ELSE 'REAL_MONEY_REFUND' END AS payment_type,
+         'REAL_MONEY_WINNING' payment_type,
          NVL(AMOUNT, 0) AMOUNT,
          NVL(AMOUNT, 0) amount_pl_currency,
          NVL(AMOUNT, 0) amount_sys_currency,
