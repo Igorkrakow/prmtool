@@ -29,12 +29,12 @@ log_with_timestamp() {
 }
 
 num_rows=100000
-fileNameEndDate=$(date -d "$1" +%Y%m%d-%H%M%S)
+fileNameEndDate=$(date -d "$1" +%Y%m%d)
 db2 connect to pddb
 
 log_with_timestamp "CREATE TSO_PAYMENT_TRANSACTION FILE"
 
-db2 export to TSO_PAYMENT_TRANSACTION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_PAYMENT_TRANSACTION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         'external_id',
         'id_transaction',
@@ -82,16 +82,16 @@ db2 export to TSO_PAYMENT_TRANSACTION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
         'ext_divisor_amount'
  FROM sysibm.sysdummy1"
 
-db2 export to TSO_PAYMENT_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_PAYMENT_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         PLAYER_ID EXTERNAL_ID,
-        '8::1::' || PLAYER_ID || '::' || MIN(UUID) || '::70'  ID_TRANSACTION,
+        '8::1::' || PLAYER_ID || '::' || UUID || '::70'  ID_TRANSACTION,
         0 ASYNC_RETRY_COUNTER,
         15 DEVICE_ID,
         '1.0000000000' EXCHANGE_RATE,
         '1.0000000000' EXCHANGE_RATE_SYS_CURRENCY,
-        VARCHAR_FORMAT(MIN(TRANSACTION_DATE),'YYYY-MM-DD HH24:MI:SS.FF3') EXTERNAL_TRANSACTION_DATE,
-        MIN(UUID) EXTERNAL_TRANSACTION_ID,
+        VARCHAR_FORMAT(TRANSACTION_DATE,'YYYY-MM-DD HH24:MI:SS.FF3') EXTERNAL_TRANSACTION_DATE,
+        UUID EXTERNAL_TRANSACTION_ID,
         PRODUCT GAME_CODE,
         'USD' GAME_CURRENCY,
         '' INPUT_DATA,
@@ -108,9 +108,9 @@ db2 export to TSO_PAYMENT_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
         '' id_process_transaction,
         '' PROXY_ADDRESS,
         0 RETRY_COUNTER,
-        SUM(NVL(AMOUNT, 0)) TOT_AMOUNT,
-        SUM(NVL(AMOUNT, 0)) TOT_AMOUNT_PLAYER_CURRENCY,
-        SUM(NVL(AMOUNT, 0)) TOT_AMOUNT_SYSTEM_CURRENCY,
+        NVL(AMOUNT, 0) TOT_AMOUNT,
+        NVL(AMOUNT, 0) TOT_AMOUNT_PLAYER_CURRENCY,
+        NVL(AMOUNT, 0) TOT_AMOUNT_SYSTEM_CURRENCY,
         0 TOT_LOY_POINT,
         0 VALIDATION_CORE_RESULT_CODE,
         'OK' VALIDATION_CORE_RESULT_DESC,
@@ -129,8 +129,7 @@ db2 export to TSO_PAYMENT_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
         0 rollback_retry_counter,
         100 EXT_DIVISOR_AMOUNT
     FROM TXSTORE.TMP_TSO_PAYMENT
-    WHERE START_DATE_UPDATE >= '$start_date' AND END_DATE_UPDATE <= '$end_date'
-    GROUP BY PLAYER_ID,PRODUCT,GLOBAL_TRANS_ID,STATUS,DRAW"
+    WHERE START_DATE_UPDATE >= '$start_date' AND END_DATE_UPDATE <= '$end_date'"
 
 db2 terminate
 
@@ -161,7 +160,7 @@ rm $csvFileName'_HEADER.csv'
 log_with_timestamp "CREATE TSO_PAYMENT_AMOUNT FILE"
 
 db2 connect to pddb
-db2 export to TSO_PAYMENT_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_PAYMENT_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
           'external_id',
          'payment_transaction_id',
@@ -197,7 +196,7 @@ db2 export to TSO_PAYMENT_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
          'Txt_trans_ext _id'
  FROM sysibm.sysdummy1"
 
- db2 export to TSO_PAYMENT_AMOUNT_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+ db2 export to TSO_PAYMENT_AMOUNT_TMP.csv OF DEL MODIFIED BY NOCHARDEL  coldel0x7C"
      SELECT
          PLAYER_ID EXTERNAL_ID,
          '8::1::' || PLAYER_ID || '::' || UUID || '::70'  payment_transaction_id,

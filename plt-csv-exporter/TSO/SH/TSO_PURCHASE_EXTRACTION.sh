@@ -29,12 +29,12 @@ log_with_timestamp() {
 }
 
 num_rows=100000
-fileNameEndDate=$(date -d "$1" +%Y%m%d-%H%M%S)
+fileNameEndDate=$(date -d "$1" +%Y%m%d)
 db2 connect to pddb
 
 log_with_timestamp "CREATE TSO_PURCHASE_TRANSACTION FILE"
 
-db2 export to TSO_PURCHASE_TRANSACTION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_PURCHASE_TRANSACTION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         'external_id',
         'id_transaction',
@@ -87,7 +87,7 @@ db2 export to TSO_PURCHASE_TRANSACTION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  
         'ext_divisor_amount'
  FROM sysibm.sysdummy1"
 
-db2 export to TSO_PURCHASE_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_PURCHASE_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         PLAYER_ID EXTERNAL_ID,
         '8::1::' || PLAYER_ID || '::' || UUID || '::70' ID_TRANSACTION,
@@ -170,7 +170,7 @@ rm $csvFileName'_HEADER.csv'
 log_with_timestamp "CREATE TSO_PURCHASE_AMOUNT FILE"
 
 db2 connect to pddb
-db2 export to TSO_PURCHASE_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_PURCHASE_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         'external_id',
         'purchase_transaction_id',
@@ -194,7 +194,7 @@ db2 export to TSO_PURCHASE_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
         'Txt_trans_ext_id'
  FROM sysibm.sysdummy1"
 
- db2 export to TSO_PURCHASE_AMOUNT_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+ db2 export to TSO_PURCHASE_AMOUNT_TMP.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
      SELECT
          PLAYER_ID EXTERNAL_ID,
          '8::1::' || PLAYER_ID || '::' || UUID || '::70' purchase_transaction_id,

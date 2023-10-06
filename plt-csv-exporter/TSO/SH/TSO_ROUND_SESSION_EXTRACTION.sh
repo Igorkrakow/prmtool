@@ -29,12 +29,12 @@ log_with_timestamp() {
 }
 
 num_rows=100000
-fileNameEndDate=$(date -d "$1" +%Y%m%d-%H%M%S)
+fileNameEndDate=$(date -d "$1" +%Y%m%d)
 db2 connect to pddb
 
 log_with_timestamp "CREATE TSO_GAME_SESSION FILE"
 
-db2 export to TSO_GAME_SESSION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_GAME_SESSION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         'external_id',
         'gamesession_id',
@@ -70,7 +70,7 @@ db2 export to TSO_GAME_SESSION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
         'ext_divisor_amount'
 FROM sysibm.sysdummy1"
 
-db2 export to TSO_GAME_SESSION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_GAME_SESSION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  coldel0x7C"
     SELECT
         PLAYER_ID EXTERNAL_ID,
         GLOBAL_TRANS_ID gamesession_id,
@@ -139,7 +139,7 @@ rm $csvFileName'_HEADER.csv'
 log_with_timestamp "CREATE TSO_GAME_ROUND FILE"
 
 db2 connect to pddb
-db2 export to TSO_GAME_ROUND_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
+db2 export to TSO_GAME_ROUND_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         'external_id',
         'round_id',
@@ -164,7 +164,7 @@ db2 export to TSO_GAME_ROUND_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
         'ext_divisor_amount'
  FROM sysibm.sysdummy1"
 
- db2 export to TSO_GAME_ROUND_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+ db2 export to TSO_GAME_ROUND_TMP.csv OF DEL MODIFIED BY NOCHARDEL  coldel0x7C"
      SELECT
          PLAYER_ID EXTERNAL_ID,
          GLOBAL_TRANS_ID round_id,
