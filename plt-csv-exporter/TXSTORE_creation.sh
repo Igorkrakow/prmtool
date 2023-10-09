@@ -86,8 +86,8 @@ log_with_timestamp "CREATE TABLE MIGRATED_TX_DRAW_ENTRY"
 db2 -td@ -f SQL/CREATE/create_migrated_tx_draw_entry.sql | tee -a $logfile
 
 ###   CREATE AND REORG INDEX LOTTERY_TX_HEADER  (GLOBAL_TRANS_ID,START_DRAW_NUMBER,LOTTERY_TRANSACTION_TYPE) ###########
-log_with_timestamp "CREATE AND REORG INDEX LOTTERY_TX_HEADER (GLOBAL_TRANS_ID,START_DRAW_NUMBER,LOTTERY_TRANSACTION_TYPE)"
-db2 -td@ -f SQL/CREATE/create_index_on_lottery_tx_header.sql | tee -a $logfile
+#log_with_timestamp "CREATE AND REORG INDEX LOTTERY_TX_HEADER (GLOBAL_TRANS_ID,START_DRAW_NUMBER,LOTTERY_TRANSACTION_TYPE)"
+#db2 -td@ -f SQL/CREATE/create_index_on_lottery_tx_header.sql | tee -a $logfile
 
 ###   CREATE PROCEDURE INSERT_INTO_MIGRATED_TX_DRAW_ENTRY ###########
 sed "s/{PROJECT_CONDITION}/$project_condition/g" SQL/CREATE/create_procedure_for_insert_into_migrated_tx_draw_entry.sql > SQL/CREATE/create_procedure_for_insert_into_migrated_tx_draw_entry_tmp.sql
