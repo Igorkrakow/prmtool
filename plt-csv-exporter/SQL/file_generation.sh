@@ -12,6 +12,9 @@ log_with_timestamp() {
   echo "" | tee -a $logfile
   echo "$current_timestamp - $1" | tee -a $logfile
 }
+
+golive=$2
+
 num_rows=100000
 fileNameEndDate=$(date -d "$1" +%Y%m%d-%H%M%S)
 db2 connect to pddb
@@ -148,6 +151,30 @@ db2 export to tx-draws_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
                 'draw_time',
                 'draw_status'
             FROM sysibm.sysdummy1"
+if [ "$golive" = "y" ]; then
+db2 export to tx-draws_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
+            SELECT
+                E.IDDGGAME as product_id,
+                E.DRAWNUMBER as draw_id,
+                null as draw_name,
+                varchar_format(E.DRAWDATE,'YYYY-MM-DD HH24:MI:SS.FF3') as draw_time,
+                CASE WHEN E.IDDGGAMEEVENT < G.IDDGGAMEEVENT_CURRENT THEN
+                         'CLOSE'
+                     ELSE 'OPEN'  END as draw_status
+            FROM GIS.DGGAMEEVENT E
+                     join TXSTORE.MIGRATED_TX_DRAW_ENTRY MTDE on E.DRAWNUMBER=MTDE.DRAWNUMBER
+                     join TXSTORE.MIGRATED_TX_TRANSACTION MTT on mtde.UUID = mtt.UUID
+                     left join GIS.DGGAME G ON G.IDDGGAME=E.IDDGGAME
+            where NOT EXISTS (
+                    SELECT 1 FROM TXSTORE.MIGRATED_TX_DRAWS TMD
+                    WHERE TMD.IDDGGAME = E.IDDGGAME AND TMD.DRAWNUMBER = E.DRAWNUMBER
+                )
+            group by E.IDDGGAME ,
+                     E.DRAWNUMBER ,
+                     E.IDDGGAMEEVENT,
+                     G.IDDGGAMEEVENT_CURRENT,
+                     varchar_format(E.DRAWDATE,'YYYY-MM-DD HH24:MI:SS.FF3')"
+else
 db2 export to tx-draws_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
             SELECT
                 E.IDDGGAME as product_id,
@@ -167,7 +194,7 @@ db2 export to tx-draws_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                 group by E.IDDGGAME ,
                          E.DRAWNUMBER ,
                          varchar_format(E.DRAWDATE,'YYYY-MM-DD HH24:MI:SS.FF3')"
-
+fi
 log_with_timestamp "Copy data to MIGRATED_TX_DRAWS from DGGAMEEVENT"
 db2	"INSERT INTO TXSTORE.MIGRATED_TX_DRAWS (IDDGGAME, DRAWNUMBER)
       SELECT

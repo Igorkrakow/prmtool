@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT varchar(10))
+CREATE OR REPLACE PROCEDURE TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT varchar(10),V_IS_GOLIVE varchar(1))
     LANGUAGE SQL
 BEGIN
     DECLARE SQLCODE INT DEFAULT 0;
@@ -72,6 +72,7 @@ BEGIN
                                                         INNER JOIN GIS.DGGAME G ON G.IDDGGAME=V_PRODUCT
                                                         AND G.IDDGGAMEEVENT_CURRENT=E.IDDGGAMEEVENT;
                 IF V_CURRENT_DRAW is NOT null AND V_END_DRAW_NUMBER is NOT null AND V_END_DRAW_NUMBER>V_CURRENT_DRAW
+                    and V_IS_GOLIVE = 'n'
                     then
                     SET V_IS_OPEN = TRUE;
                     insert into TXSTORE.MIGR_OPEN_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID,GLOBAL_TRANS_ID,CDC,SERIAL)
@@ -90,7 +91,7 @@ BEGIN
                 SELECT MAX(TX_HEADER_ID) into V_OPEN_TX_HEADER_ID FROM TXSTORE.MIGR_OPEN_TX_HEADER
                     where (GLOBAL_TRANS_ID=V_GLOBAL_TRANS_ID and  SERIAL=V_SERIAL)
                     or (CDC=V_CDC and SERIAL=V_SERIAL);
-                IF V_OPEN_TX_HEADER_ID is not null then
+                IF V_OPEN_TX_HEADER_ID is not null and V_IS_GOLIVE = 'n' then
                     SET V_IS_OPEN = TRUE;
                     insert into TXSTORE.MIGR_OPEN_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID,GLOBAL_TRANS_ID,CDC,SERIAL)
                     values (V_TX_HEADER_ID,V_PLAYER_ID,V_UUID,V_GLOBAL_TRANS_ID,V_CDC,V_SERIAL);

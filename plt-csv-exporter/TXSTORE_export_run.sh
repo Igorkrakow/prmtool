@@ -88,7 +88,7 @@ db2 "INSERT INTO TXSTORE.MIGR_TX_HEADER (TX_HEADER_ID,PLAYER_ID,UUID)
       WHERE $project_condition T.TX_HEADER_ID BETWEEN $countMIN AND $countMAX"| tee -a $logfile
 #####################
 log_with_timestamp "Starting Create Json and tx-transaction files"
-db2 "call TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT => '$project');"| tee -a $logfile
+db2 "call TXSTORE.TX_TRANSACTION_JSON_EXPORT(V_PROJECT => '$project' , V_IS_GOLIVE => 'n');"| tee -a $logfile
 #####################
 log_with_timestamp "Copy data to MIGRATED_TX_DRAW_ENTRY from DGGAMEEVENT "
 echo "Count of transaction for MIGRATED_TX_DRAW_ENTRY: "
@@ -105,10 +105,10 @@ db2 "UPDATE TXSTORE.MIGRATED_TX_DRAW_ENTRY SET WIN_STATUS = 'WINNING' where ID i
 
 log_with_timestamp "Starting file_generation"
 echo "Starting file_generation"
-sh SQL/file_generation.sh "$endDate"
+sh SQL/file_generation.sh "$endDate" "n"
 
 log_with_timestamp "Starting KPI"
-echo "Starting file_generation"
+echo "Starting KPI"
 sh SQL/kpi.sh "$project" "$countMIN" "$countMAX"
 #####################
 
