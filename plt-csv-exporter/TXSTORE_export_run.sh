@@ -55,10 +55,16 @@ log_with_timestamp "Count min and max TX_HEADER_ID for current range"
 countMIN=$(db2 -x "SELECT MIN(H.TX_HEADER_ID) FROM TXSTORE.TX_HEADER H WHERE H.INSERT_TIMESTAMP>='$startDate' $conditionId")
 log_with_timestamp "min TX_HEADER_ID = $countMIN"
 #####################
-countMAX=$(db2 -x "SELECT max(H.TX_HEADER_ID)
+countMAX=$(db2 -x "SELECT nvl(max(H.TX_HEADER_ID),0)
                    FROM TXSTORE.TX_HEADER H where h.TX_HEADER_ID<(SELECT MIN(H.TX_HEADER_ID)
                                                                   FROM TXSTORE.TX_HEADER H
                   WHERE H.TX_HEADER_ID>'$countMIN'and H.INSERT_TIMESTAMP>(DATE('$endDate')+1 DAY)) ")
+if [ "$countMAX" -eq 0 ]; then
+    countMAX=$(db2 -x "SELECT max(H.TX_HEADER_ID)
+                       FROM TXSTORE.TX_HEADER H
+                       where H.INSERT_TIMESTAMP<(DATE('$endDate')+1 DAY)
+                         and H.TX_HEADER_ID>'$countMIN'")
+fi
 log_with_timestamp "max TX_HEADER_ID = $countMAX"
 ##########################################################################################################################################################################################
 
