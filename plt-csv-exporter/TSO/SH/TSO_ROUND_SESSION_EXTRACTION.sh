@@ -82,6 +82,7 @@ db2 export to TSO_GAME_SESSION_TMP.csv OF DEL MODIFIED BY NOCHARDEL  coldel0x7C"
         VARCHAR_FORMAT(TRANSACTION_TIME_LOCAL,'YYYY-MM-DD HH24:MI:SS.FF3') start_time,
         15 device_id,
         '8::1::' || PLAYER_ID || '::' || UUID || '::70' start_transaction_id,
+        UUID ext_start_transaction_id,
         '' token,
         CASE
             WHEN (DRAWCLOSETIME < '2022-10-30 03:30:00.000') THEN VARCHAR_FORMAT((DRAWCLOSETIME+ 2 HOURS),'YYYY-MM-DD HH24:MI:SS.FF3')
