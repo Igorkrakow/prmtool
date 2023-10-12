@@ -218,9 +218,8 @@ db2 export to TSO_PAYMENT_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0
          NVL(AMOUNT, 0) net_payment_amount_sys_currency,
          VARCHAR_FORMAT(TRANSACTION_DATE,'YYYY-MM-DD HH24:MI:SS.FF3') payment_confirm_date,
          VARCHAR_FORMAT(TRANSACTION_DATE,'YYYY-MM-DD HH24:MI:SS.FF3') payment_reserve_date,
-         case when STATUS = 'WINNING' THEN 'False'
-                  ELSE 'True' END AS refund,
-         '8::1::' || PLAYER_ID || '::' || UUID || '::70'  id_transaction,
+         'False' AS refund,
+         '8::1::' || PLAYER_ID || '::' || UUID||'-'|| DRAW || '::70'  id_transaction,
          VARCHAR_FORMAT(TRANSACTION_DATE, 'YYYY-MM-DD HH24:MI:SS.FF3') creation_timestamp,
          null info,
          CASE WHEN AMOUNT > 2280000 THEN 'HIGH'
