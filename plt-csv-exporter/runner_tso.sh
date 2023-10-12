@@ -47,59 +47,9 @@ db2 "call TXSTORE.TSO_PAYMENT_OPEN_SD_TO_CLOSED_DELTA(START_TIME => '$startDate'
 log_with_timestamp "TSO_PAYMENT_OPEN_MD_TO_CLOSED_DELTA STARTING"
 db2 "call TXSTORE.TSO_PAYMENT_OPEN_MD_TO_CLOSED_DELTA(START_TIME => '$startDate',END_TIME => '$endDate');"| tee -a $logfile
 
-#log_with_timestamp "TSO_PAYMENT_SD_CLOSED STARTING"
-#db2 "call TXSTORE.TSO_PAYMENT_SD_CLOSED(START_TIME => '$startDate',END_TIME => '$endDate');"| tee -a $logfile
+log_with_timestamp "TSO_PAYMENT_CLOSED STARTING"
+db2 "call TXSTORE.TSO_PAYMENT_CLOSED(START_TIME => '$startDate',END_TIME => '$endDate');"| tee -a $logfile
 
-log_with_timestamp "TSO_PAYMENT_SD_AND_MD_CLOSED STARTING"
-db2 "insert into TXSTORE.TMP_TSO_PAYMENT(TRANSACTION_ID, PLAYER_ID, STATUS, DRAW, TRANSACTION_DATE, UUID,
-                                         PRODUCT, AMOUNT, GLOBAL_TRANS_ID,
-                                         START_DATE_RUN, END_DATE_RUN,
-                                         START_DATE_UPDATE, END_DATE_UPDATE, DELTA)
-     SELECT
-         lthw.LOTTERY_TX_HEADER_ID,
-         lthw.PLAYER_ID,
-         CASE WHEN NVL(VAL.TRANSACTION_AMOUNT,0)   > 0
-                  THEN 'WINNING'
-              ELSE 'LOSER' END as status,
-         lthw.DRAWNUMBER,
-         CASE WHEN VAL.TRANSACTION_TIME_LOCAL IS NULL THEN LTHW.TRANSACTION_TIME_LOCAL
-              ELSE VAL.TRANSACTION_TIME_LOCAL END as date,
-         CASE WHEN LTV.UUID IS NULL THEN lthw.UUID
-              ELSE LTV.UUID END as uuid,
-         lthw.PRODUCT,
-         NVL(VAL.TRANSACTION_AMOUNT,0),
-         LTHW.GLOBAL_TRANS_ID,
-         '$startDate',
-         '$endDate',
-         '$startDate',
-         '$endDate',
-         'i'
-     from (
-              SELECT
-                           LTHW.LOTTERY_TX_HEADER_ID,
-                           LTHW.GLOBAL_TRANS_ID,
-                           LTHW.SERIAL,
-                           LTHW.CDC,
-                           LTHW.START_DRAW_NUMBER,
-                           LTHW.END_DRAW_NUMBER,
-                           LTHW.PRODUCT,
-                           THW.UUID,
-                           LTHW.TRANSACTION_TIME_LOCAL,
-                           THW.PLAYER_ID,
-                           e.DRAWNUMBER
-                       FROM  TXSTORE.LOTTERY_TX_HEADER LTHW
-                                 JOIN TXSTORE.TX_HEADER THW ON THW.TX_HEADER_ID = LTHW.LOTTERY_TX_HEADER_ID
-                           AND LTHW.LOTTERY_TRANSACTION_TYPE = 'WAGER'
-                       AND LTHW.TRANSACTION_TIME_LOCAL >= '$startDate' AND LTHW.TRANSACTION_TIME_LOCAL < '$endDate'
-                           JOIN TXSTORE.LAST_CLOSED ON lthw.PRODUCT = TXSTORE.LAST_CLOSED.IDDGGAME
-                           AND END_DRAW_NUMBER <= TXSTORE.LAST_CLOSED.DRAWNUMBER
-                           join  gis.DGGAMEEVENT e on e.DRAWNUMBER between lthw.START_DRAW_NUMBER and lthw.END_DRAW_NUMBER and e.IDDGGAME = lthw.PRODUCT
-
-                   ) lthw
-                       LEFT JOIN TXSTORE.LOTTERY_TX_HEADER  VAL ON val.LOTTERY_TRANSACTION_TYPE = 'VALIDATION' AND (
-                      (lthw.GLOBAL_TRANS_ID = VAL.GLOBAL_TRANS_ID AND lthw.SERIAL = VAL.SERIAL and VAL.START_DRAW_NUMBER = lthw.DRAWNUMBER) OR
-                      (lthw.CDC = VAL.CDC AND lthw.SERIAL = VAL.SERIAL  and VAL.START_DRAW_NUMBER = lthw.DRAWNUMBER AND lthw.GLOBAL_TRANS_ID != VAL.GLOBAL_TRANS_ID))
-                       left join TXSTORE.TX_HEADER LTV on VAL.LOTTERY_TX_HEADER_ID = LTV.TX_HEADER_ID"| tee -a $logfile
 
 log_with_timestamp "TSO_PAYMENT_SD_OPEN STARTING"
 db2 "call TXSTORE.TSO_PAYMENT_SD_OPEN(START_TIME => '$startDate',END_TIME => '$endDate');"| tee -a $logfile
