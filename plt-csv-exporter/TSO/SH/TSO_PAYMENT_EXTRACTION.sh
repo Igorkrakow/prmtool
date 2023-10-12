@@ -85,7 +85,7 @@ db2 export to TSO_PAYMENT_TRANSACTION_HEADER.csv OF DEL MODIFIED BY NOCHARDEL co
 db2 export to TSO_PAYMENT_TRANSACTION_TMP.csv OF DEL MODIFIED BY NOCHARDEL coldel0x7C "
     SELECT
         PLAYER_ID EXTERNAL_ID,
-        '8::1::' || PLAYER_ID || '::' || UUID||DRAW|| '::70'  ID_TRANSACTION,
+        '8::1::' || PLAYER_ID || '::' || UUID|| '-' || DRAW || '::70'  ID_TRANSACTION,
         0 ASYNC_RETRY_COUNTER,
         15 DEVICE_ID,
         '1.0000000000' EXCHANGE_RATE,
@@ -199,7 +199,7 @@ db2 export to TSO_PAYMENT_AMOUNT_HEADER.csv OF DEL MODIFIED BY NOCHARDEL coldel0
  db2 export to TSO_PAYMENT_AMOUNT_TMP.csv OF DEL MODIFIED BY NOCHARDEL  coldel0x7C"
      SELECT
          PLAYER_ID EXTERNAL_ID,
-         '8::1::' || PLAYER_ID || '::' || UUID|| DRAW || '::70'  payment_transaction_id,
+         '8::1::' || PLAYER_ID || '::' || UUID||'-'|| DRAW || '::70'  payment_transaction_id,
          'REAL_MONEY_WINNING' payment_type,
          NVL(AMOUNT, 0) AMOUNT,
          NVL(AMOUNT, 0) amount_pl_currency,
