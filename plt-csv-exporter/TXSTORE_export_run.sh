@@ -103,6 +103,10 @@ db2 -td@ -f SQL/INSERT/insert_migrated_results.sql | tee -a $logfile
 log_with_timestamp "UPDATE WIN_STATUS for MIGRATED_TX_DRAW_ENTRY"
 db2 "UPDATE TXSTORE.MIGRATED_TX_DRAW_ENTRY SET WIN_STATUS = 'WINNING' where ID in(select TX_DRAW_ENTRY_ID from TXSTORE.MIGRATED_RESULTS)"
 
+log_with_timestamp "Starting result errors insert"
+echo "Starting result errors insert"
+db2 -td@ -f SQL/INSERT/insert_result_errors.sql | tee -a $logfile
+
 log_with_timestamp "Starting file_generation"
 echo "Starting file_generation"
 sh SQL/file_generation.sh "$endDate" "n"

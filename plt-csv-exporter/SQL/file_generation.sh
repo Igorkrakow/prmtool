@@ -30,9 +30,12 @@ db2 export to json-transaction_HEADER.csv OF DEL MODIFIED BY NOCHARDEL  "
     FROM sysibm.sysdummy1"
 db2 export to json-transaction_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
     SELECT
-        uuid,
-        json
-    FROM TXSTORE.MIGRATED_TX_JSON"
+        j.uuid,
+        j.json
+    FROM TXSTORE.MIGRATED_TX_JSON as j
+        join TXSTORE.MIGRATED_TX_TRANSACTION tt on j.uuid=tt.uuid
+        where tt.TX_TRANSACTION_ID not in (SELECT ID FROM TXSTORE.MIGRATION_ERRORS)
+    "
 ###########################
 db2 terminate
 ###########################
@@ -110,7 +113,8 @@ db2 export to tx-transaction_TMP.csv OF DEL MODIFIED BY NOCHARDEL  "
                 END_DRAW_NUMBER,
                 SITE_JSON_DATA,
                 SERIAL_NUMBER
-            FROM TXSTORE.MIGRATED_TX_TRANSACTION"
+            FROM TXSTORE.MIGRATED_TX_TRANSACTION
+            WHERE TX_TRANSACTION_ID not in (SELECT ID FROM TXSTORE.MIGRATION_ERRORS)"
 ###########################
 db2 terminate
 ###########################
